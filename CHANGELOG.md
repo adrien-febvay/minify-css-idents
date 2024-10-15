@@ -1,4 +1,5 @@
 # Dev
+- Test Webpack compilation
 - Use "afterEmit" hook instead of "make"
 
 # Version 0.1.0
