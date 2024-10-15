@@ -91,7 +91,7 @@ export class MinifyCssIdents extends Module {
         }
         if (mode !== 'load-map') {
           const action = () => (mode === 'consume-map' ? this.removeMap(filename) : this.saveMap(filename));
-          compiler.hooks.make.tap(MinifyCssIdents.name, action);
+          compiler.hooks.afterEmit.tap(MinifyCssIdents.name, action);
         }
       }
       this.applied = true;

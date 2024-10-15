@@ -43,8 +43,8 @@ class MinifyCssIdents extends OriginalMinifyCssIdents {
 
 function mockCompiler() {
   const beforeCompile = new FakeHook();
-  const make = new FakeHook();
-  const fakeCompiler = { context: 'default-context', hooks: { beforeCompile, make } };
+  const afterEmit = new FakeHook();
+  const fakeCompiler = { context: 'default-context', hooks: { beforeCompile, afterEmit } };
   return fakeCompiler as Compiler & typeof fakeCompiler;
 }
 
@@ -175,7 +175,7 @@ describe('Check MinifyCssIdents plugin and loader', () => {
     const minifyCssIdents = new MinifyCssIdents({ filename: 'some-file' });
     const compiler = minifyCssIdents.apply();
     expect(compiler.hooks.beforeCompile.listenerCount('emit')).toBe(1);
-    expect(compiler.hooks.make.listenerCount('emit')).toBe(1);
+    expect(compiler.hooks.afterEmit.listenerCount('emit')).toBe(1);
   });
 
   it('Ident map is loaded', () => {
@@ -245,7 +245,7 @@ describe('Check MinifyCssIdents plugin and loader', () => {
     minifyCssIdents.generateIdent('alpha');
     minifyCssIdents.generateIdent('beta');
     minifyCssIdents.generateIdent('alpha');
-    minifyCssIdents.apply().hooks.make.emit();
+    minifyCssIdents.apply().hooks.afterEmit.emit();
     expect(mockedFs.mkdirSync).toHaveBeenCalledTimes(1);
     expect(mockedFs.mkdirSync).toHaveBeenCalledWith('.', { recursive: true });
     expect(mockedFs.writeFileSync).toHaveBeenCalledTimes(1);
@@ -261,8 +261,8 @@ describe('Check MinifyCssIdents plugin and loader', () => {
       throw new Error();
     });
     const minifyCssIdents = new MinifyCssIdents({ filename: 'some-file' });
-    const make = minifyCssIdents.apply().hooks.make.listener;
-    expect(make).toThrow('Failure to write CSS identifier map some-file\n  Error');
+    const afterEmit = minifyCssIdents.apply().hooks.afterEmit.listener;
+    expect(afterEmit).toThrow('Failure to write CSS identifier map some-file\n  Error');
     expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
     expect(consoleWarnSpy).toHaveBeenCalledWith('Failure to create directory .\n  Error');
   });
@@ -270,7 +270,7 @@ describe('Check MinifyCssIdents plugin and loader', () => {
   it('The ident map is removed', () => {
     mockedFs.rmSync.mockImplementation();
     const minifyCssIdents = new MinifyCssIdents({ filename: 'some-file', mode: 'consume-map' });
-    minifyCssIdents.apply().hooks.make.emit();
+    minifyCssIdents.apply().hooks.afterEmit.emit();
     expect(mockedFs.rmSync).toHaveBeenCalledTimes(1);
     expect(mockedFs.rmSync).toHaveBeenCalledWith('some-file');
   });
@@ -281,7 +281,7 @@ describe('Check MinifyCssIdents plugin and loader', () => {
       throw new Error();
     });
     const minifyCssIdents = new MinifyCssIdents({ filename: 'some-file', mode: 'consume-map' });
-    minifyCssIdents.apply().hooks.make.emit();
+    minifyCssIdents.apply().hooks.afterEmit.emit();
     expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
     expect(consoleWarnSpy).toHaveBeenCalledWith('Failure to remove CSS identifier map file some-file\n  Error');
   });
