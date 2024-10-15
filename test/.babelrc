@@ -1,0 +1,16 @@
+{
+  "ignore": ["node_modules"],
+  "presets": [
+    [
+      "@babel/preset-env",
+      {
+        "modules": false,
+        "targets": {
+          "browsers": ["last 2 versions"]
+        },
+        "useBuiltIns": "entry",
+        "corejs": "3.30.2"
+      }
+    ]
+  ]
+}

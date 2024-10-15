@@ -8,6 +8,8 @@
     "eslint": "eslint src/**/*.{ts,tsx}",
     "eslint-fix": "eslint **/*/*.{ts,tsx} --fix",
     "test": "jest --coverage --runInBand --verbose",
+    "pretest-case": "npm run build && webpack --config test/webpack.build1.config.js && webpack --config test/webpack.build2.config.js",
+    "test-case": "node test/dist2",
     "build": "node build",
     "preversion": "changelog check && npm test && npm run build",
     "version": "changelog update && git add CHANGELOG.md"
@@ -34,12 +36,15 @@
   ],
   "main": "dist",
   "devDependencies": {
+    "@babel/core": "^7.25.8",
+    "@babel/preset-env": "^7.25.8",
     "@types/jest": "^29.5.13",
     "@types/node": "^22.5.5",
     "@typescript-eslint/eslint-plugin": "^8.8.0",
     "@typescript-eslint/parser": "^8.8.0",
+    "babel-loader": "^9.2.1",
     "changelog-safeguard": "^1.0.1",
-    "css-loader": "^7.0.0",
+    "css-loader": "^7.1.2",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.30.0",
@@ -47,11 +52,15 @@
     "eslint-plugin-promise": "^7.1.0",
     "jest": "^29.7.0",
     "jest-runner-eslint": "^2.2.0",
+    "mini-css-extract-plugin": "^2.9.1",
+    "postcss-loader": "^8.1.1",
     "prettier": "^3.3.3",
     "rimraf": "^6.0.1",
+    "style-loader": "^4.0.0",
     "ts-jest": "^29.2.5",
     "typescript": "^5.5.4",
-    "webpack": "^5.0.0"
+    "webpack": "^5.95.0",
+    "webpack-cli": "^5.1.4"
   },
   "peerDependencies": {
     "css-loader": ">= 7.0.0",
