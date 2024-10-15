@@ -184,7 +184,7 @@ export class MinifyCssIdents extends Module {
       console.warn(MinifyCssIdentsError.message(`Failure to create directory ${path}`, cause));
     }
     try {
-      writeFileSync(filename, JSON.stringify(this.identMap, null, this.options.mapIndent), 'utf-8');
+      writeFileSync(filename, `${JSON.stringify(this.identMap, null, this.options.mapIndent)}\n`, 'utf-8');
     } catch (cause) {
       throw new MinifyCssIdentsError(`Failure to write CSS identifier map ${filename}`, cause);
     }

@@ -249,7 +249,7 @@ describe('Check MinifyCssIdents plugin and loader', () => {
     expect(mockedFs.mkdirSync).toHaveBeenCalledTimes(1);
     expect(mockedFs.mkdirSync).toHaveBeenCalledWith('.', { recursive: true });
     expect(mockedFs.writeFileSync).toHaveBeenCalledTimes(1);
-    expect(mockedFs.writeFileSync).toHaveBeenCalledWith('some-file', '{"alpha":"a","beta":"b"}', 'utf-8');
+    expect(mockedFs.writeFileSync).toHaveBeenCalledWith('some-file', '{"alpha":"a","beta":"b"}\n', 'utf-8');
   });
 
   it('Error is throw and warning is issued for ident map saving failure', () => {
