@@ -1,0 +1,15 @@
+# https://github.com/facebook/create-react-app/blob/main/.gitignore
+.idea/
+.npm/
+.vscode/
+.VSCodeCounter/
+node_modules/
+/coverage/
+/dist/
+/test*.js
+.DS_Store
+*.tgz
+lerna-debug.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

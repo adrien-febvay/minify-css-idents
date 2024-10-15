@@ -1,0 +1,90 @@
+{
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:@typescript-eslint/recommended-requiring-type-checking",
+    "plugin:@typescript-eslint/strict",
+    "prettier"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "plugins": [
+    "import",
+    "promise",
+    "prettier",
+    "@typescript-eslint/eslint-plugin"
+  ],
+  "env": {
+    "es6": true,
+    "node": false,
+    "browser": false
+  },
+  "parserOptions": {
+    "ecmaVersion": 2018,
+    "project": "./tsconfig.eslint.json",
+    "sourceType": "module",
+    "jsx": false
+  },
+  // For VSCode failing to use "project" above: ignore some files.
+  "ignorePatterns": ["dist/*", "lib/*", "**/*.js", "**/*.d.ts", "**/*.mjs", "**/node-modules/**/*"],
+  "settings": {
+    "import/resolver": {
+      "node": {
+        "paths": ["."],
+        "extensions": [".js", ".ts"]
+      }
+    }
+  },
+  "rules": {
+    "arrow-body-style": ["error", "as-needed"],
+    "comma-dangle": ["error", {
+      "arrays": "only-multiline",
+      "objects": "only-multiline",
+      "imports": "only-multiline",
+      "exports": "only-multiline",
+      "functions": "only-multiline"
+    }],
+    "curly": [2, "all"],
+    "indent": [2, 2, { "SwitchCase": 1}],
+    "max-params": ["error", 5],
+    "max-depth": ["error", 5],
+    "no-console": "error",
+    "no-use-before-define": "off",
+    "promise/always-return": "off",
+    "promise/catch-or-return": "error",
+    "promise/param-names": "error",
+    "promise/no-return-wrap": "error",
+    "prettier/prettier": ["error"],
+    "@typescript-eslint/array-type": ["error", {
+      "default": "array",
+      "readonly": "array"
+    }],
+    "@typescript-eslint/consistent-indexed-object-style": ["error", "index-signature"],
+    "@typescript-eslint/consistent-type-definitions": "off",
+    "@typescript-eslint/explicit-function-return-type": "off",
+    "@typescript-eslint/explicit-member-accessibility": "error",
+    "@typescript-eslint/no-dynamic-delete": "off",
+    "@typescript-eslint/no-empty-interface": "off",
+    "@typescript-eslint/no-explicit-any": ["error", {
+      "ignoreRestArgs": true
+    }],
+    "@typescript-eslint/no-invalid-void-type": ["error", {
+      "allowAsThisParameter": true
+    }],
+    "@typescript-eslint/no-namespace": "off",
+    "@typescript-eslint/no-unsafe-declaration-merging": "off",
+    "@typescript-eslint/no-unused-vars": ["error", {
+      "argsIgnorePattern": "^_",
+      "caughtErrorsIgnorePattern": "^_",
+      "destructuredArrayIgnorePattern": "^_",
+      "ignoreRestSiblings": true
+    }],
+    "@typescript-eslint/prefer-nullish-coalescing": "off",
+    "@typescript-eslint/unified-signatures": "off"
+  },
+  "overrides": [{
+    "files": ["*.spec.ts"],
+    "rules": {
+      "@typescript-eslint/no-unsafe-assignment": "off"
+    }
+  }]
+}

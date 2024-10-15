@@ -1,0 +1,68 @@
+{
+  "name": "minify-css-idents",
+  "version": "0.0.0",
+  "description": "Rename and minify CSS identifiers to emit smaller CSS files",
+  "author": "Adrien Febvay <adrien.febvay@gmail.com> (https://github.com/adrien-febvay)",
+  "license": "MIT",
+  "scripts": {
+    "eslint": "eslint src/**/*.{ts,tsx}",
+    "eslint-fix": "eslint **/*/*.{ts,tsx} --fix",
+    "test": "jest --coverage --runInBand --verbose",
+    "build": "node build",
+    "preversion": "changelog check && npm test && npm run build",
+    "version": "changelog update && git add CHANGELOG.md"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adrien-febvay/minify-css-idents.git"
+  },
+  "bugs": {
+    "url": "https://github.com/adrien-febvay/minify-css-idents/issues",
+    "email": "adrien.febvay@gmail.com"
+  },
+  "homepage": "https://github.com/adrien-febvay/minify-css-idents#readme",
+  "keywords": [
+    "webpack",
+    "minify",
+    "css",
+    "ident",
+    "optimization",
+    "web"
+  ],
+  "files": [
+    "dist/*"
+  ],
+  "main": "dist",
+  "devDependencies": {
+    "@types/jest": "^29.5.13",
+    "@types/node": "^22.5.5",
+    "@typescript-eslint/eslint-plugin": "^8.8.0",
+    "@typescript-eslint/parser": "^8.8.0",
+    "changelog-safeguard": "^1.0.1",
+    "css-loader": "^7.0.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.30.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "eslint-plugin-promise": "^7.1.0",
+    "jest": "^29.7.0",
+    "jest-runner-eslint": "^2.2.0",
+    "prettier": "^3.3.3",
+    "rimraf": "^6.0.1",
+    "ts-jest": "^29.2.5",
+    "typescript": "^5.5.4",
+    "webpack": "^5.0.0"
+  },
+  "peerDependencies": {
+    "css-loader": ">= 7.0.0",
+    "webpack": ">= 5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "css-loader": {
+      "optional": true
+    },
+    "webpack": {
+      "optional": true
+    }
+  }
+}
