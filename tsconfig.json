@@ -26,6 +26,7 @@
     },
     "typeRoots": [
       "./node_modules/@types",
+      "./src/types",
     ],
     "resolveJsonModule": false,
     "esModuleInterop": true,
