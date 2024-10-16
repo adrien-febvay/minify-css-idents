@@ -1,4 +1,4 @@
-# Dev
+# Version 0.2.1
 - Various configuration adjustments
 - Add README file
 
