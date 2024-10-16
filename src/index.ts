@@ -1,35 +1,16 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { dirname, relative } from 'path';
 import { Compiler, Module } from 'webpack';
+import { MinifiyCssIdentsPluginError } from './Error';
+import { isDictLike, isError, type } from './utils';
 
 const alphabet = '0123456789abcdefghijklmnopqrstuvwxyz';
-
-export class MinifyCssIdentsError extends Error {
-  public constructor(message: string, cause?: unknown, capture?: (...args: any[]) => void) {
-    super(MinifyCssIdentsError.message(message, cause));
-    if (capture) {
-      Error.captureStackTrace(this, capture);
-    }
-  }
-
-  public static message(message: string, cause?: unknown) {
-    return cause === void 0 ? message : `${message}\n  ${String(cause).replace(/\n/g, '\n  ')}`;
-  }
-}
-
-function isDictLike(value: unknown): value is NodeJS.Dict<unknown> {
-  return value ? typeof value === 'object' : false;
-}
-
-function isError(value: unknown): value is Error & { code: unknown } {
-  return value instanceof Error;
-}
 
 function parseMap(filename: string, bytes: string) {
   try {
     return JSON.parse(bytes);
   } catch (cause) {
-    throw new MinifyCssIdentsError(`Failure to parse ${filename}`, cause, parseMap);
+    throw new MinifiyCssIdentsPluginError(`Failure to parse ${filename}`, cause, parseMap);
   }
 }
 
@@ -40,32 +21,23 @@ function readMap(filename: string, ignoreNoEnt?: boolean) {
     if (ignoreNoEnt && isError(cause) && cause.code === 'ENOENT') {
       return null;
     } else {
-      throw new MinifyCssIdentsError(`Failure to read ${filename}`, cause, parseMap);
+      throw new MinifiyCssIdentsPluginError(`Failure to read ${filename}`, cause, parseMap);
     }
   }
 }
 
-function type(value: unknown, limit?: number) {
-  if (typeof value === 'string') {
-    const str = JSON.stringify(value);
-    return limit != null && str.length > limit ? `string(${value.length})` : str;
-  } else {
-    return value === null ? 'null' : value instanceof Array ? 'array' : typeof value;
-  }
-}
-
-export class MinifyCssIdents extends Module {
-  public readonly options: MinifyCssIdents.Options.Resolved;
+class MinifiyCssIdentsPlugin extends Module {
+  public readonly options: MinifiyCssIdentsPlugin.Options.Resolved;
   protected lastIdent: string[];
-  protected identMap: MinifyCssIdents.Map = {};
+  protected identMap: MinifiyCssIdentsPlugin.Map = {};
   protected applied = false;
   protected contextPath = '';
 
-  public constructor(options?: MinifyCssIdents.Options) {
+  public constructor(options?: MinifiyCssIdentsPlugin.Options) {
     super('css/minify-ident');
     if (options?.exclude?.filter((ident) => /^\*|\*./.test(ident)).length) {
       const details = 'The * wildchar can only be used at the end of an identifier';
-      throw new MinifyCssIdentsError('Invalid "exclude" option', details);
+      throw new MinifiyCssIdentsPluginError('Invalid "exclude" option', details);
     }
     const excludePrefix = options?.exclude?.filter((ident) => /\*$/.test(ident));
     this.options = Object.freeze({
@@ -87,11 +59,13 @@ export class MinifyCssIdents extends Module {
       const { filename, mode } = this.options;
       if (filename) {
         if (mode === 'default' || mode === 'load-map' || mode === 'extend-map' || mode === 'consume-map') {
-          compiler.hooks.beforeCompile.tap(MinifyCssIdents.name, () => this.loadMap(filename, mode === 'default'));
+          compiler.hooks.beforeCompile.tap(MinifiyCssIdentsPlugin.name, () =>
+            this.loadMap(filename, mode === 'default'),
+          );
         }
         if (mode !== 'load-map') {
           const action = () => (mode === 'consume-map' ? this.removeMap(filename) : this.saveMap(filename));
-          compiler.hooks.afterEmit.tap(MinifyCssIdents.name, action);
+          compiler.hooks.afterEmit.tap(MinifiyCssIdentsPlugin.name, action);
         }
       }
       this.applied = true;
@@ -111,13 +85,13 @@ export class MinifyCssIdents extends Module {
         }
       }
       if (invalidIdents) {
-        throw new MinifyCssIdentsError(`Invalid CSS identifier(s) in ${this.options.filename}${invalidIdents}`);
+        throw new MinifiyCssIdentsPluginError(`Invalid CSS identifier(s) in ${this.options.filename}${invalidIdents}`);
       }
       this.lastIdent = lastIdent.split('');
-      return value as MinifyCssIdents.Map;
+      return value as MinifiyCssIdentsPlugin.Map;
     } else {
       const details = `Expected string dictionary, got ${type(value)}`;
-      throw new MinifyCssIdentsError(`Invalid CSS identifier map in ${this.options.filename}`, details);
+      throw new MinifiyCssIdentsPluginError(`Invalid CSS identifier map in ${this.options.filename}`, details);
     }
   }
 
@@ -171,7 +145,7 @@ export class MinifyCssIdents extends Module {
       rmSync(filename);
     } catch (cause) {
       // eslint-disable-next-line no-console
-      console.warn(MinifyCssIdentsError.message(`Failure to remove CSS identifier map file ${filename}`, cause));
+      console.warn(MinifiyCssIdentsPluginError.message(`Failure to remove CSS identifier map file ${filename}`, cause));
     }
   }
 
@@ -181,19 +155,23 @@ export class MinifyCssIdents extends Module {
       mkdirSync(path, { recursive: true });
     } catch (cause) {
       // eslint-disable-next-line no-console
-      console.warn(MinifyCssIdentsError.message(`Failure to create directory ${path}`, cause));
+      console.warn(MinifiyCssIdentsPluginError.message(`Failure to create directory ${path}`, cause));
     }
     try {
       writeFileSync(filename, `${JSON.stringify(this.identMap, null, this.options.mapIndent)}\n`, 'utf-8');
     } catch (cause) {
-      throw new MinifyCssIdentsError(`Failure to write CSS identifier map ${filename}`, cause);
+      throw new MinifiyCssIdentsPluginError(`Failure to write CSS identifier map ${filename}`, cause);
     }
   }
 
   public static readonly alphabet = alphabet;
+
+  public static readonly Error = MinifiyCssIdentsPluginError;
 }
 
-export namespace MinifyCssIdents {
+namespace MinifiyCssIdentsPlugin {
+  export type Error = MinifiyCssIdentsPluginError;
+
   export type Map = { [Key in string]?: string };
 
   export interface Options {
@@ -221,3 +199,5 @@ export namespace MinifyCssIdents {
 interface LoaderContext {
   resourcePath: string;
 }
+
+export = MinifiyCssIdentsPlugin;

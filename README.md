@@ -2,7 +2,7 @@
 
 ![CI Tests status](https://github.com/adrien-febvay/minify-css-idents/actions/workflows/ci-tests.yml/badge.svg)
 
-Shorten identifiers to make CSS files lighter.
+A Webpack plug-in to shorten identifiers to make CSS files lighter.
 
 ## Disclaimer: package still in development stage
 
@@ -33,8 +33,8 @@ This is the typical configuration that should be compatible all use cases.
 First, import and instanciate the minifier. 
 
 ```js
-const { MinifyCssIdents } = require("minify-css-idents");
-const minifyCssIdents = new MinifyCssIdents({
+const MinifiyCssIdentsPlugin = require("minify-css-idents");
+const minifyCssIdentsPlugin = new MinifiyCssIdentsPlugin({
   context: "resolved-path-to-the-first-source-to-build",
   filename: "resolved-path-to/idents.map.json",
   exclude: ["global-identifiers-here"]
@@ -54,7 +54,7 @@ module.exports = {
             loader: "css-loader",
             options: {
               modules: {
-                getLocalIdent: minifyCssIdents.getLocalIdent,
+                getLocalIdent: minifyCssIdentsPlugin.getLocalIdent,
               }
             }
           }
@@ -70,13 +70,13 @@ Finally, add the minifier instance to the plugins.
 ```js
 module.exports = {
   plugins: [
-    minifyCssIdents
+    minifyCssIdentsPlugin
   ]
 };
 ```
 
 If your project has a unique build step, thus using Webpack a single, and you don't want a map file to be emitted, you may omit:
-- The options when instanciating `MinifyCssIdents`;
+- The options when instanciating `MinifiyCssIdentsPlugin`;
 - To add its instance in Webpack's `plugins`.
 
 ## Options
@@ -84,7 +84,7 @@ If your project has a unique build step, thus using Webpack a single, and you do
 Available options to specify in the instanciation of the minifier:
 
 ```js
-const minifyCssIdents = new MinifyCssIdents({
+const minifyCssIdentsPlugin = new MinifiyCssIdentsPlugin({
   context: "resolved-path-to-the-first-source-to-build",
   exclude: ["some-ident", "some-ident-prefix-*"],
   filename: "resolved-path-to/idents.map.json",
