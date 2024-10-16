@@ -1,3 +1,7 @@
+# Dev
+- Various configuration adjustments
+- Add README file
+
 # Version 0.2.0
 - Test Webpack compilation
 - Use "afterEmit" hook instead of "make"
