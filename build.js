@@ -110,7 +110,13 @@ function tsc(tmpDir) {
   }
 }
 
-const tmpDir = fs.mkdtempSync(join(os.tmpdir(), 'typescript-partial-lib-dom'));
+let packageName;
+try {
+  packageName = JSON.parse(fs.readFileSync('package.json', 'utf-8')).name;
+} catch (cause) {
+  kill(500, 'Failure to get version from package.json\n ', String(cause));
+}
+const tmpDir = fs.mkdtempSync(join(os.tmpdir(), `${packageName}-`));
 prepareDir(tmpDir);
 const outDir = resolveOutDir();
 prepareDir(outDir);
