@@ -1,10 +1,10 @@
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const SourceMapDevToolPlugin = require('webpack').SourceMapDevToolPlugin;
-const MinifyCssIdents = require('../dist').MinifyCssIdents;
+const MinifyCssIdentsPlugin = require('../dist');
 
 const resolve = require('path').resolve.bind(null, __dirname, '..');
 
-const minifyCssIdents = new MinifyCssIdents({
+const minifyCssIdents = new MinifyCssIdentsPlugin({
   filename: resolve('test/dist1/css/styles.map.json'),
   mode: 'create-map',
 });
