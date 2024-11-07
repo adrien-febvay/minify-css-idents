@@ -11,21 +11,9 @@ class MinifyCssIdentsPlugin extends OriginalMinifyCssIdentsPlugin {
     return compiler;
   }
 
-  public getContextPath() {
-    return this.contextPath;
-  }
-
-  public getLastIdent() {
-    return this.lastIdent;
-  }
-
-  public getIdentMap() {
-    return this.identMap;
-  }
-
   public expectIdent(ident: string, key = `test-${ident}`) {
     try {
-      expect(this.generateIdent(key)).toBe(ident);
+      expect(this.identManager.generateIdent(key)).toBe(ident);
     } catch (error) {
       if (error instanceof Error) {
         // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -35,8 +23,24 @@ class MinifyCssIdentsPlugin extends OriginalMinifyCssIdentsPlugin {
     }
   }
 
+  public getContextPath() {
+    return this.contextPath;
+  }
+
+  public getIdentManager() {
+    return this.identManager;
+  }
+
+  public getIdentMap() {
+    return this.identManager.identMap;
+  }
+
+  public getLastIdent() {
+    return this.identManager.lastIdent;
+  }
+
   public setLastIdent(lastIndent: string): this {
-    this.lastIdent = lastIndent.split('');
+    this.identManager.lastIdent = lastIndent.split('');
     return this;
   }
 }
@@ -257,9 +261,10 @@ describe('Check MinifyCssIdentsPlugin plugin and loader', () => {
 
   it('The ident map is saved', () => {
     const minifyCssIdents = new MinifyCssIdentsPlugin({ filename: 'some-file', mapIndent: 0 });
-    minifyCssIdents.generateIdent('alpha');
-    minifyCssIdents.generateIdent('beta');
-    minifyCssIdents.generateIdent('alpha');
+    const identManager = minifyCssIdents.getIdentManager();
+    identManager.generateIdent('alpha');
+    identManager.generateIdent('beta');
+    identManager.generateIdent('alpha');
     const { compilation } = minifyCssIdents.apply().hooks;
     compilation.emitAsset.mockImplementation();
     compilation.emit();
