@@ -1,9 +1,9 @@
 import { spawnSync } from 'child_process';
-import { readFileSync } from 'fs';
-import { relative, resolve as legacyResolve } from 'path';
+import { readFileSync, statSync } from 'fs';
+import { resolve as legacyResolve } from 'path';
 
 const root = legacyResolve(__dirname, '..');
-const resolve = (...path: string[]) => relative(root, legacyResolve(root, ...path));
+const resolve = (...path: string[]) => legacyResolve(root, ...path);
 
 function run(...cmd: [string, ...string[]]) {
   const chunks = cmd.map((chunk) => chunk.trim().split(/\s+/)).flat(1);
@@ -51,5 +51,15 @@ describe('Check Webpack compilation output', () => {
     const expected = JSON.parse(expectedIdentMap.replace(/styles\.css\//g, ''));
     const received = JSON.parse(run('node test/dist2'));
     expect(received).toStrictEqual(expected);
+  });
+
+  it('Build test/src3', () => {
+    expect(() => run('npm run pretest-case:src3')).not.toThrow();
+  });
+
+  it('Ident map is removed', () => {
+    const path = resolve('test/dist1/css/styles.map.json');
+    const message = `ENOENT: no such file or directory, stat '${path}'`;
+    expect(() => statSync(path)).toThrow(message);
   });
 });

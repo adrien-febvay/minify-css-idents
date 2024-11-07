@@ -9,7 +9,6 @@ A Webpack plug-in to shorten identifiers to make CSS files lighter.
 The solutions it uses are not optimal yet:
 - At the moment it uses `css-loader` to do its job, instead of having a loader of its own.
 - It cannot detect global CSS identifiers yet, which must therefore be declared in the options.
-- It might taps the wrong Webpack compilation hooks.
 
 This package will be improved over time. In the meantime, while it seems to do its job correctly,
 it may not work as intended with all building solutions.
@@ -185,13 +184,7 @@ It uses the `getLocalIdent` option of `css-loader` to replace the CSS identifier
 When registered in Webpack's plug-ins, it has the opportunity to create, update and/or load an indentifier map file.
 This feature is critical to keep the identifiers consistent across build steps.
 
-It uses the `beforeCompile` hook of Webpack's compiler to read the map file, and the `afterEmit` hook to write/delete it.
-
-Even though handling the map through hooks get the job done, it is not the most reliable solution, especially because
-the map file is emitted after Webpack should be done emitting files and because Webpack doesn't know the map is emitted.
-As a result, some plug-ins might get the `afterEmit` signal before the map is emitted
-and will not get the `assetEmitted` signal for the map.
-Future versions of this package will fix that.
+It uses the `beforeCompile` hook of Webpack's compiler to read the map file, then the `compilation` and`afterProcessAssets` hooks to write/delete it.
 
 ## Credits
 

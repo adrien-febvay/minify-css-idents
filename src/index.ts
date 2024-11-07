@@ -1,6 +1,6 @@
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
-import { dirname, relative } from 'path';
-import { Compiler, Module } from 'webpack';
+import { readFileSync, rmSync } from 'fs';
+import { isAbsolute, relative } from 'path';
+import { Compilation, Compiler, Module, sources } from 'webpack';
 import { MinifiyCssIdentsPluginError } from './Error';
 import { isDictLike, isError, type } from './utils';
 
@@ -64,8 +64,18 @@ class MinifiyCssIdentsPlugin extends Module {
           );
         }
         if (mode !== 'load-map') {
-          const action = () => (mode === 'consume-map' ? this.removeMap(filename) : this.saveMap(filename));
-          compiler.hooks.afterEmit.tap(MinifiyCssIdentsPlugin.name, action);
+          const { name } = MinifiyCssIdentsPlugin;
+          compiler.hooks.compilation.tap(name, (compilation) => {
+            const stage = Compilation.PROCESS_ASSETS_STAGE_OPTIMIZE;
+            compilation.hooks.afterProcessAssets.tap({ stage, name }, () => {
+              if (mode === 'consume-map') {
+                this.removeMap(filename);
+              } else {
+                const path = isAbsolute(filename) ? relative(compiler.context, filename) : filename;
+                compilation.emitAsset(path, new sources.RawSource(this.stringifyMap()));
+              }
+            });
+          });
         }
       }
       this.applied = true;
@@ -149,19 +159,8 @@ class MinifiyCssIdentsPlugin extends Module {
     }
   }
 
-  protected saveMap(filename: string) {
-    const path = dirname(filename);
-    try {
-      mkdirSync(path, { recursive: true });
-    } catch (cause) {
-      // eslint-disable-next-line no-console
-      console.warn(MinifiyCssIdentsPluginError.message(`Failure to create directory ${path}`, cause));
-    }
-    try {
-      writeFileSync(filename, `${JSON.stringify(this.identMap, null, this.options.mapIndent)}\n`, 'utf-8');
-    } catch (cause) {
-      throw new MinifiyCssIdentsPluginError(`Failure to write CSS identifier map ${filename}`, cause);
-    }
+  protected stringifyMap() {
+    return `${JSON.stringify(this.identMap, null, this.options.mapIndent)}\n`;
   }
 
   public static readonly alphabet = alphabet;

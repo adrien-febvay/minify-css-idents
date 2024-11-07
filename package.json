@@ -10,6 +10,7 @@
     "test": "jest --coverage --runInBand --verbose",
     "pretest-case:src1": "webpack --config test/webpack.build1.config.js",
     "pretest-case:src2": "webpack --config test/webpack.build2.config.js",
+    "pretest-case:src3": "webpack --config test/webpack.build3.config.js",
     "pretest-case": "npm run build && npm run pretest-case:src1 && npm run pretest-case:src2",
     "test-case": "node test/dist2",
     "build": "node build",

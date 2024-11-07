@@ -1,5 +1,5 @@
-import type { Compiler } from 'webpack';
-
+import { Compiler, sources } from 'webpack';
+import { join } from 'path';
 import fs from 'fs';
 import EventEmitter from 'events';
 import OriginalMinifiyCssIdentsPlugin from '.';
@@ -43,12 +43,12 @@ class MinifiyCssIdentsPlugin extends OriginalMinifiyCssIdentsPlugin {
 
 function mockCompiler() {
   const beforeCompile = new FakeHook();
-  const afterEmit = new FakeHook();
-  const fakeCompiler = { context: 'default-context', hooks: { beforeCompile, afterEmit } };
+  const compilation = new CompilationHook();
+  const fakeCompiler = { context: '/default-context', hooks: { beforeCompile, compilation } };
   return fakeCompiler as Compiler & typeof fakeCompiler;
 }
 
-class FakeHook extends EventEmitter {
+class FakeHook<TapType = string> extends EventEmitter {
   public emit() {
     return super.emit('emit');
   }
@@ -57,8 +57,23 @@ class FakeHook extends EventEmitter {
     return this.listeners('emit')[0];
   }
 
-  public tap(_type: string, callback: () => void) {
-    this.on('emit', callback);
+  public listenerCount() {
+    return super.listenerCount('emit');
+  }
+
+  public tap(_type: TapType, callback: (hook: this) => void) {
+    this.on('emit', () => callback.call(null, this));
+  }
+}
+
+class CompilationHook extends FakeHook<string> {
+  public readonly hooks = { afterProcessAssets: new FakeHook<{ stage: number; name: string }>() };
+
+  public emitAsset = jest.fn();
+
+  public emit() {
+    super.emit();
+    return this.hooks.afterProcessAssets.emit();
   }
 }
 
@@ -97,7 +112,7 @@ describe('Check MinifiyCssIdentsPlugin plugin and loader', () => {
       startIdent: null,
     });
     minifyCssIdents.apply();
-    expect(minifyCssIdents.getContextPath()).toBe('default-context');
+    expect(minifyCssIdents.getContextPath()).toBe('/default-context');
   });
 
   it('Options are resolved', () => {
@@ -173,9 +188,11 @@ describe('Check MinifiyCssIdentsPlugin plugin and loader', () => {
 
   it('Hooks are attached to compiler', () => {
     const minifyCssIdents = new MinifiyCssIdentsPlugin({ filename: 'some-file' });
-    const compiler = minifyCssIdents.apply();
-    expect(compiler.hooks.beforeCompile.listenerCount('emit')).toBe(1);
-    expect(compiler.hooks.afterEmit.listenerCount('emit')).toBe(1);
+    const { hooks } = minifyCssIdents.apply();
+    hooks.compilation.emit();
+    expect(hooks.beforeCompile.listenerCount()).toBe(1);
+    expect(hooks.compilation.listenerCount()).toBe(1);
+    expect(hooks.compilation.hooks.afterProcessAssets.listenerCount()).toBe(1);
   });
 
   it('Ident map is loaded', () => {
@@ -239,38 +256,32 @@ describe('Check MinifiyCssIdentsPlugin plugin and loader', () => {
   });
 
   it('The ident map is saved', () => {
-    mockedFs.mkdirSync.mockImplementation();
-    mockedFs.writeFileSync.mockImplementation();
     const minifyCssIdents = new MinifiyCssIdentsPlugin({ filename: 'some-file', mapIndent: 0 });
     minifyCssIdents.generateIdent('alpha');
     minifyCssIdents.generateIdent('beta');
     minifyCssIdents.generateIdent('alpha');
-    minifyCssIdents.apply().hooks.afterEmit.emit();
-    expect(mockedFs.mkdirSync).toHaveBeenCalledTimes(1);
-    expect(mockedFs.mkdirSync).toHaveBeenCalledWith('.', { recursive: true });
-    expect(mockedFs.writeFileSync).toHaveBeenCalledTimes(1);
-    expect(mockedFs.writeFileSync).toHaveBeenCalledWith('some-file', '{"alpha":"a","beta":"b"}\n', 'utf-8');
+    const { compilation } = minifyCssIdents.apply().hooks;
+    compilation.emitAsset.mockImplementation();
+    compilation.emit();
+    expect(compilation.emitAsset).toHaveBeenCalledTimes(1);
+    expect(compilation.emitAsset).toHaveBeenCalledWith(
+      'some-file',
+      new sources.RawSource('{"alpha":"a","beta":"b"}\n'),
+    );
   });
 
-  it('Error is throw and warning is issued for ident map saving failure', () => {
-    consoleWarnSpy.mockImplementation();
-    mockedFs.mkdirSync.mockImplementation(() => {
-      throw new Error();
-    });
-    mockedFs.writeFileSync.mockImplementation(() => {
-      throw new Error();
-    });
-    const minifyCssIdents = new MinifiyCssIdentsPlugin({ filename: 'some-file' });
-    const afterEmit = minifyCssIdents.apply().hooks.afterEmit.listener;
-    expect(afterEmit).toThrow('Failure to write CSS identifier map some-file\n  Error');
-    expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
-    expect(consoleWarnSpy).toHaveBeenCalledWith('Failure to create directory .\n  Error');
+  it('The ident map is saved using an absolute path', () => {
+    const minifyCssIdents = new MinifiyCssIdentsPlugin({ filename: '/some-file' });
+    const { compilation } = minifyCssIdents.apply().hooks;
+    compilation.emitAsset.mockImplementation();
+    compilation.emit();
+    expect(compilation.emitAsset).toHaveBeenCalledWith(join('..', 'some-file'), new sources.RawSource('{}\n'));
   });
 
   it('The ident map is removed', () => {
     mockedFs.rmSync.mockImplementation();
     const minifyCssIdents = new MinifiyCssIdentsPlugin({ filename: 'some-file', mode: 'consume-map' });
-    minifyCssIdents.apply().hooks.afterEmit.emit();
+    minifyCssIdents.apply().hooks.compilation.emit();
     expect(mockedFs.rmSync).toHaveBeenCalledTimes(1);
     expect(mockedFs.rmSync).toHaveBeenCalledWith('some-file');
   });
@@ -281,7 +292,7 @@ describe('Check MinifiyCssIdentsPlugin plugin and loader', () => {
       throw new Error();
     });
     const minifyCssIdents = new MinifiyCssIdentsPlugin({ filename: 'some-file', mode: 'consume-map' });
-    minifyCssIdents.apply().hooks.afterEmit.emit();
+    minifyCssIdents.apply().hooks.compilation.emit();
     expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
     expect(consoleWarnSpy).toHaveBeenCalledWith('Failure to remove CSS identifier map file some-file\n  Error');
   });
