@@ -38,7 +38,10 @@ module.exports = {
             loader: 'css-loader',
             options: {
               modules: {
-                getLocalIdent: minifyCssIdents.getLocalIdent
+                exportLocalsConvention: 'camelCase',
+                getLocalIdent: minifyCssIdents.getLocalIdent,
+                localIdentContext: resolve('test/src1'),
+                localIdentName: '[path]___[name]__[local]',
               },
             },
           },
