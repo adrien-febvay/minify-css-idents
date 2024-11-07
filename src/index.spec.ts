@@ -1,4 +1,4 @@
-import { Compiler, sources } from 'webpack';
+import { Compiler, LoaderContext, sources } from 'webpack';
 import { join } from 'path';
 import fs from 'fs';
 import EventEmitter from 'events';
@@ -11,8 +11,8 @@ class MinifyCssIdentsPlugin extends OriginalMinifyCssIdentsPlugin {
     return compiler;
   }
 
-  public getContextPath() {
-    return this.contextPath;
+  public mockedGetLocalIdent(resourcePath: string, localIdentName: string, localName: string) {
+    return this.getLocalIdent({ resourcePath } as LoaderContext<object>, localIdentName, localName, {});
   }
 
   public getIdentManager() {
@@ -57,11 +57,12 @@ class CompilationHook extends FakeHook<string> {
 }
 
 const someOptions = {
-  context: 'some-context',
   filename: 'some-filename',
   mapIndent: 4,
   mode: 'extend-map',
 } as const;
+
+jest.mock('css-loader');
 
 jest.mock('fs');
 const mockedFs = jest.requireMock<{ [Key in keyof typeof fs]: jest.Mock }>('fs');
@@ -76,30 +77,25 @@ afterEach(() => {
   jest.resetAllMocks();
 });
 
-describe('Check MinifyCssIdentsPlugin plugin and loader', () => {
+describe('Check MinifyCssIdentsPlugin plugin', () => {
   it('Options are defaulted', () => {
     const minifyCssIdents = new MinifyCssIdentsPlugin();
     expect(minifyCssIdents.options).toMatchObject({
-      context: null,
       filename: null,
       mapIndent: 2,
       mode: 'default',
     });
-    minifyCssIdents.apply();
-    expect(minifyCssIdents.getContextPath()).toBe('/default-context');
   });
 
   it('Options are resolved', () => {
     const minifyCssIdents = new MinifyCssIdentsPlugin(someOptions);
     expect(minifyCssIdents.options).toMatchObject(someOptions);
-    minifyCssIdents.apply();
-    expect(minifyCssIdents.getContextPath()).toBe('some-context');
   });
 
   it('Idents are made from context', () => {
     const minifyCssIdents = new MinifyCssIdentsPlugin();
-    minifyCssIdents.getLocalIdent({ resourcePath: 'some-path' }, 'n/a', 'some-name');
-    expect(minifyCssIdents.getIdentManager().identMap).toMatchObject({ 'some-path/some-name': 'a' });
+    minifyCssIdents.mockedGetLocalIdent('some-path', 'n/a', 'some-name');
+    expect(minifyCssIdents.getIdentManager().identMap).toMatchObject({ '___some-path__some-name': 'a' });
   });
 
   it('Ident map is loaded', () => {

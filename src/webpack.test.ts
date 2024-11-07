@@ -23,10 +23,10 @@ function run(...cmd: [string, ...string[]]) {
 }
 
 const expectedIdentMap = `{
-  "styles.css/alpha": "a",
-  "styles.css/beta": "b",
-  "styles.css/gamma": "c",
-  "styles.css/delta": "d"
+  "___styles__alpha": "a",
+  "___styles__beta": "b",
+  "___styles__gamma": "c",
+  "___styles__delta": "d"
 }
 `;
 
@@ -39,16 +39,20 @@ describe('Check Webpack compilation output', () => {
     expect(() => run('npm run pretest-case:src1')).not.toThrow();
   });
 
-  it('Build test/src2', () => {
-    expect(() => run('npm run pretest-case:src2')).not.toThrow();
-  });
-
   it('Ident map is correct', () => {
     expect(readFileSync(resolve('test/dist1/css/styles.map.json'), 'utf-8')).toBe(expectedIdentMap);
   });
 
+  it('Build test/src2', () => {
+    expect(() => run('npm run pretest-case:src2')).not.toThrow();
+  });
+
+  it('Ident map is still correct', () => {
+    expect(readFileSync(resolve('test/dist1/css/styles.map.json'), 'utf-8')).toBe(expectedIdentMap);
+  });
+
   it('CSS module is correct', () => {
-    const expected = JSON.parse(expectedIdentMap.replace(/styles\.css\//g, ''));
+    const expected = JSON.parse(expectedIdentMap.replace(/___styles__/g, ''));
     const received = JSON.parse(run('node test/dist2'));
     expect(received).toStrictEqual(expected);
   });

@@ -32,9 +32,14 @@ This is the typical configuration that should be compatible all use cases.
 First, import and instanciate the minifier. 
 
 ```js
+<<<<<<< HEAD
 const MinifyCssIdentsPlugin = require("minify-css-idents");
 const minifyCssIdentsPlugin = new MinifyCssIdentsPlugin({
   context: "resolved-path-to-the-first-source-to-build",
+=======
+const MinifyCssIdentsPlugin = require("minify-css-idents");
+const minifyCssIdentsPlugin = new MinifyCssIdentsPlugin({
+>>>>>>> 78ca094 (Unminified idents are now made by css-loader's defaultGetLocalIdent)
   filename: "resolved-path-to/idents.map.json",
   exclude: ["global-identifiers-here"]
 });
@@ -83,8 +88,12 @@ If your project has a unique build step, thus using Webpack a single, and you do
 Available options to specify in the instanciation of the minifier:
 
 ```js
+<<<<<<< HEAD
 const minifyCssIdentsPlugin = new MinifyCssIdentsPlugin({
   context: "resolved-path-to-the-first-source-to-build",
+=======
+const minifyCssIdentsPlugin = new MinifyCssIdentsPlugin({
+>>>>>>> 78ca094 (Unminified idents are now made by css-loader's defaultGetLocalIdent)
   exclude: ["some-ident", "some-ident-prefix-*"],
   filename: "resolved-path-to/idents.map.json",
   mapIndent: 2,
@@ -92,17 +101,6 @@ const minifyCssIdentsPlugin = new MinifyCssIdentsPlugin({
   startIdent: "some-minified-ident-to-start-with",
 });
 ```
-
-### options.context
-
-Default value: `null`
-
-Root directory used to make relative paths to the CSS files.
-
-Useful for projects with multiple build steps, using Webpack several times, in order for the minifier
-to keep the identifiers consistent. Therefore, this options needs to be set to the directory `css-loader`
-uses as root in the first build step. It may be affected by the `context` options of Webpack, and by the
-`localIdentContext` of `css-loader`.
 
 ### options.exclude
 

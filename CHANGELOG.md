@@ -1,3 +1,6 @@
+# Dev
+- Unminified idents are now made by css-loader's defaultGetLocalIdent
+
 # Version 0.3.0
 - Use "compilation" and "afterProcessAssets" hooks instead of "afterEmit"
 - Use "emitAsset" to generate map file
