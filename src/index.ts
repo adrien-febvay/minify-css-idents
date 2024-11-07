@@ -1,10 +1,9 @@
 import { readFileSync, rmSync } from 'fs';
 import { isAbsolute, relative } from 'path';
 import { Compilation, Compiler, Module, sources } from 'webpack';
+import { IdentManager } from './IdentManager';
 import { MinifiyCssIdentsPluginError } from './Error';
-import { isDictLike, isError, type } from './utils';
-
-const alphabet = '0123456789abcdefghijklmnopqrstuvwxyz';
+import { isError } from './utils';
 
 function parseMap(filename: string, bytes: string) {
   try {
@@ -26,30 +25,31 @@ function readMap(filename: string, ignoreNoEnt?: boolean) {
   }
 }
 
+function removeMap(filename: string) {
+  try {
+    rmSync(filename);
+  } catch (cause) {
+    // eslint-disable-next-line no-console
+    console.warn(MinifiyCssIdentsPluginError.message(`Failure to remove CSS identifier map file ${filename}`, cause));
+  }
+}
+
 class MinifiyCssIdentsPlugin extends Module {
   public readonly options: MinifiyCssIdentsPlugin.Options.Resolved;
-  protected lastIdent: string[];
-  protected identMap: MinifiyCssIdentsPlugin.Map = {};
+  protected readonly identManager: IdentManager;
   protected applied = false;
   protected contextPath = '';
 
   public constructor(options?: MinifiyCssIdentsPlugin.Options) {
     super('css/minify-ident');
-    if (options?.exclude?.filter((ident) => /^\*|\*./.test(ident)).length) {
-      const details = 'The * wildchar can only be used at the end of an identifier';
-      throw new MinifiyCssIdentsPluginError('Invalid "exclude" option', details);
-    }
-    const excludePrefix = options?.exclude?.filter((ident) => /\*$/.test(ident));
+    this.identManager = new IdentManager(options);
     this.options = Object.freeze({
       context: options?.context ?? null,
-      exclude: options?.exclude?.filter((ident) => !/\*/.test(ident)) ?? [],
-      excludePrefix: excludePrefix?.map((ident) => ident.slice(0, -1)) ?? ['ad'],
       filename: options?.filename ?? null,
       mapIndent: options?.mapIndent ?? 2,
       mode: options?.mode ?? 'default',
-      startIdent: options?.startIdent ?? null,
+      ...this.identManager.options,
     });
-    this.lastIdent = options?.startIdent?.split('') ?? [];
     this.getLocalIdent = this.getLocalIdent.bind(this);
   }
 
@@ -69,7 +69,7 @@ class MinifiyCssIdentsPlugin extends Module {
             const stage = Compilation.PROCESS_ASSETS_STAGE_OPTIMIZE;
             compilation.hooks.afterProcessAssets.tap({ stage, name }, () => {
               if (mode === 'consume-map') {
-                this.removeMap(filename);
+                removeMap(filename);
               } else {
                 const path = isAbsolute(filename) ? relative(compiler.context, filename) : filename;
                 compilation.emitAsset(path, new sources.RawSource(this.stringifyMap()));
@@ -82,88 +82,23 @@ class MinifiyCssIdentsPlugin extends Module {
     }
   }
 
-  protected checkMap(value: unknown) {
-    if (isDictLike(value)) {
-      let lastIdent: string = '';
-      let invalidIdents = '';
-      for (const [key, ident] of Object.entries(value)) {
-        if (typeof ident !== 'string' || !/^[a-z][^_\W]*$/i.test(ident)) {
-          const strKey = `\n  ${/[^$\w]/.test(key) ? JSON.stringify(key) : key}: `;
-          invalidIdents += `${strKey}${type(ident, 80 - strKey.length)}`;
-        } else if (ident.length > lastIdent.length || ident > lastIdent) {
-          lastIdent = ident;
-        }
-      }
-      if (invalidIdents) {
-        throw new MinifiyCssIdentsPluginError(`Invalid CSS identifier(s) in ${this.options.filename}${invalidIdents}`);
-      }
-      this.lastIdent = lastIdent.split('');
-      return value as MinifiyCssIdentsPlugin.Map;
-    } else {
-      const details = `Expected string dictionary, got ${type(value)}`;
-      throw new MinifiyCssIdentsPluginError(`Invalid CSS identifier map in ${this.options.filename}`, details);
-    }
-  }
-
-  public generateIdent(key: string) {
-    let ident = this.identMap[key];
-    if (!ident) {
-      let { lastIdent } = this;
-      let offset = -1;
-      do {
-        offset = ~offset ? offset : lastIdent.length;
-        do {
-          const char = lastIdent[(offset -= 1)] ?? '';
-          if (offset >= 0) {
-            lastIdent[offset] = alphabet[alphabet.indexOf(char) + 1] ?? '0';
-          } else {
-            lastIdent = ['a', ...lastIdent.map(() => '0')];
-          }
-        } while (offset >= 0 && (lastIdent[offset] === '0' || lastIdent[0] === '0'));
-        ident = lastIdent.join('');
-        offset = this.prefixIndex(ident);
-      } while (offset >= 0 || this.options.exclude.includes(ident));
-      this.identMap[key] = ident;
-      this.lastIdent = lastIdent;
-    }
-    return ident;
-  }
-
   public getLocalIdent(context: LoaderContext, _localIdentName: string, localName: string) {
     const resourcePath = relative(this.contextPath, context.resourcePath).replace(/\\/g, '/');
-    return this.generateIdent(`${resourcePath}/${localName}`);
+    return this.identManager.generateIdent(`${resourcePath}/${localName}`);
   }
 
   protected loadMap(filename: string, ignoreNoEnt?: boolean) {
     const mapBytes = readMap(filename, ignoreNoEnt);
     if (mapBytes !== null) {
-      this.identMap = this.checkMap(parseMap(filename, mapBytes));
-    }
-  }
-
-  protected prefixIndex(ident: string) {
-    for (const prefix of this.options.excludePrefix) {
-      if (ident.startsWith(prefix)) {
-        return prefix.length;
-      }
-    }
-    return -1;
-  }
-
-  protected removeMap(filename: string) {
-    try {
-      rmSync(filename);
-    } catch (cause) {
-      // eslint-disable-next-line no-console
-      console.warn(MinifiyCssIdentsPluginError.message(`Failure to remove CSS identifier map file ${filename}`, cause));
+      this.identManager.loadMap(parseMap(filename, mapBytes), filename);
     }
   }
 
   protected stringifyMap() {
-    return `${JSON.stringify(this.identMap, null, this.options.mapIndent)}\n`;
+    return `${JSON.stringify(this.identManager.identMap, null, this.options.mapIndent)}\n`;
   }
 
-  public static readonly alphabet = alphabet;
+  public static readonly alphabet = IdentManager.alphabet;
 
   public static readonly Error = MinifiyCssIdentsPluginError;
 }
@@ -171,26 +106,21 @@ class MinifiyCssIdentsPlugin extends Module {
 namespace MinifiyCssIdentsPlugin {
   export type Error = MinifiyCssIdentsPluginError;
 
-  export type Map = { [Key in string]?: string };
+  export type Map = IdentManager.Map;
 
-  export interface Options {
+  export interface Options extends IdentManager.Options {
     context?: string | null;
-    exclude?: readonly string[] | null;
     filename?: string | null;
     mapIndent?: number | null;
     mode?: 'default' | 'load-map' | 'extend-map' | 'consume-map' | 'create-map' | null;
-    startIdent?: string | null;
   }
 
   export namespace Options {
-    export interface Resolved {
+    export interface Resolved extends IdentManager.Options.Resolved {
       context: string | null;
-      exclude: readonly string[];
-      excludePrefix: readonly string[];
       filename: string | null;
       mapIndent: number;
       mode: 'default' | 'load-map' | 'extend-map' | 'consume-map' | 'create-map';
-      startIdent: string | null;
     }
   }
 }
