@@ -1,6 +1,7 @@
 # Dev
 - Unminified idents are now made by css-loader's defaultGetLocalIdent
 - New "enabled" option to toggle the plug-in, by default true on production
+- Add "app" and "root" to default excluded identifiers
 
 # Version 0.3.0
 - Use "compilation" and "afterProcessAssets" hooks instead of "afterEmit"

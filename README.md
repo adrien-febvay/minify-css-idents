@@ -111,9 +111,9 @@ It is also active by default if `MinifyCssIdentsPlugin` has not been registered 
 
 ### options.exclude
 
-Default value: `["ad*"]`
+Default value: `["app", "root", "ad*"]`
 
-Identifiers of identifier prefixes the minifier should not generate. For instance, by default the minifier won't generate any identifier starting with "ad".
+Identifiers of identifier prefixes the minifier should not generate. For instance, by default the minifier won't generate any identifier "app", "root", or starting with "ad".
 
 You should put there all global identifiers your project use, meaning all identifiers that wouldn't get changed by `css-loaded`.
 

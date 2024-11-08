@@ -28,7 +28,7 @@ describe('Check IdentManager class', () => {
   it('Options are defaulted', () => {
     const identManager = new IdentManager();
     expect(identManager.options).toMatchObject({
-      exclude: [],
+      exclude: ['app', 'root'],
       excludePrefix: ['ad'],
       startIdent: null,
     });
