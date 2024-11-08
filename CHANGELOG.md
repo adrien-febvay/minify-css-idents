@@ -1,4 +1,4 @@
-# Dev
+# Version 0.4.0
 - Unminified idents are now made by css-loader's defaultGetLocalIdent
 - New "enabled" option to toggle the plug-in, by default true on production
 - Add "app" and "root" to default excluded identifiers
