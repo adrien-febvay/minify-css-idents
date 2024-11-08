@@ -1,5 +1,5 @@
 import { spawnSync } from 'child_process';
-import { readFileSync, statSync } from 'fs';
+import { readdirSync, readFileSync, statSync } from 'fs';
 import { resolve as legacyResolve } from 'path';
 
 const root = legacyResolve(__dirname, '..');
@@ -30,40 +30,47 @@ const expectedIdentMap = `{
 }
 `;
 
-describe('Check Webpack compilation output', () => {
-  it('Build package', () => {
+describe('Check Webpack compilation - Prerquisites', () => {
+  it('Package builds', () => {
     expect(() => run('npm run build')).not.toThrow();
   });
-
-  it('Build test/src1', () => {
-    expect(() => run('npm run pretest-case:src1')).not.toThrow();
-  });
-
-  it('Ident map is correct', () => {
-    expect(readFileSync(resolve('test/dist1/css/styles.map.json'), 'utf-8')).toBe(expectedIdentMap);
-  });
-
-  it('Build test/src2', () => {
-    expect(() => run('npm run pretest-case:src2')).not.toThrow();
-  });
-
-  it('Ident map is still correct', () => {
-    expect(readFileSync(resolve('test/dist1/css/styles.map.json'), 'utf-8')).toBe(expectedIdentMap);
-  });
-
-  it('CSS module is correct', () => {
-    const expected = JSON.parse(expectedIdentMap.replace(/___styles__/g, ''));
-    const received = JSON.parse(run('node test/dist2'));
-    expect(received).toStrictEqual(expected);
-  });
-
-  it('Build test/src3', () => {
-    expect(() => run('npm run pretest-case:src3')).not.toThrow();
-  });
-
-  it('Ident map is removed', () => {
-    const path = resolve('test/dist1/css/styles.map.json');
-    const message = `ENOENT: no such file or directory, stat '${path}'`;
-    expect(() => statSync(path)).toThrow(message);
-  });
 });
+
+for (const entry of readdirSync('test-cases')) {
+  if (/^syntax-\d+-/.test(entry)) {
+    const [, syntaxIndex, ...syntaxName] = entry.split('-');
+    describe(`Check Webpack compilation - Case ${syntaxIndex}: ${syntaxName.join('-')}`, () => {
+      it(`Test project test-cases/${entry}/src1 builds`, () => {
+        expect(() => run(`npm run build-test-case -- ${syntaxIndex} 1`)).not.toThrow();
+      });
+
+      it('Ident map is correct', () => {
+        expect(readFileSync(resolve('test-cases', entry, 'dist1/styles.map.json'), 'utf-8')).toBe(expectedIdentMap);
+      });
+
+      it(`Test project test-cases/${entry}/src2 builds`, () => {
+        expect(() => run(`npm run build-test-case ${syntaxIndex} 2`)).not.toThrow();
+      });
+
+      it('Ident map is still correct', () => {
+        expect(readFileSync(resolve('test-cases', entry, 'dist1/styles.map.json'), 'utf-8')).toBe(expectedIdentMap);
+      });
+
+      it('Resulting CSS module is correct', () => {
+        const expected = JSON.parse(expectedIdentMap.replace(/___styles__/g, ''));
+        const received = JSON.parse(run(`node test-cases/${entry}/dist2`));
+        expect(received).toStrictEqual(expected);
+      });
+
+      it(`Test project test-cases/${entry}/src3 builds`, () => {
+        expect(() => run(`npm run build-test-case ${syntaxIndex} 3`)).not.toThrow();
+      });
+
+      it('Ident map is removed', () => {
+        const path = resolve('test-cases', entry, '/dist1/css/styles.map.json');
+        const message = `ENOENT: no such file or directory, stat '${path}'`;
+        expect(() => statSync(path)).toThrow(message);
+      });
+    });
+  }
+}

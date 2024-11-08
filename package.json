@@ -9,11 +9,7 @@
     "eslint": "eslint src/**/*.ts",
     "eslint-fix": "eslint **/*/*.ts --fix",
     "test": "jest --coverage --runInBand --verbose",
-    "pretest-case:src1": "webpack --config test/webpack.build1.config.js",
-    "pretest-case:src2": "webpack --config test/webpack.build2.config.js",
-    "pretest-case:src3": "webpack --config test/webpack.build3.config.js",
-    "pretest-case": "npm run build && npm run pretest-case:src1 && npm run pretest-case:src2 && npm run pretest-case:src3",
-    "test-case": "node test/dist3",
+    "build-test-case": "node test-cases/build",
     "build": "node bin/build",
     "preversion": "changelog check && npm test && npm run build",
     "version": "changelog update && git add CHANGELOG.md"

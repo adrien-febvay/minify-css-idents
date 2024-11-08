@@ -6,8 +6,8 @@
 node_modules/
 /coverage/
 /dist/
-/test/dist*/
-/test*.js
+/test-cases/**/dist*/
+/test*.*
 .DS_Store
 *.tgz
 lerna-debug.log
