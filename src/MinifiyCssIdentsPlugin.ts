@@ -1,5 +1,5 @@
 import { readFileSync, rmSync } from 'fs';
-import { isAbsolute, relative } from 'path';
+import { isAbsolute, join, relative } from 'path';
 import { Compilation, Compiler, LoaderContext, Module, sources } from 'webpack';
 import { IdentManager } from './IdentManager';
 import { MinifiyCssIdentsPluginError } from './Error';
@@ -49,9 +49,10 @@ class MinifiyCssIdentsPlugin extends Module {
       const { enabled, filename, mode } = this.options;
       this.enabled = enabled ?? compiler.options.mode === 'production';
       if (this.enabled && filename) {
+        const resolvedFilename = isAbsolute(filename) ? filename : join(compiler.context, filename);
         if (mode === 'default' || mode === 'load-map' || mode === 'extend-map' || mode === 'consume-map') {
           compiler.hooks.beforeCompile.tap(MinifiyCssIdentsPlugin.name, () =>
-            this.loadMap(filename, mode === 'default'),
+            this.loadMap(resolvedFilename, mode === 'default'),
           );
         }
         if (mode !== 'load-map') {
@@ -60,10 +61,10 @@ class MinifiyCssIdentsPlugin extends Module {
             const stage = Compilation.PROCESS_ASSETS_STAGE_OPTIMIZE;
             compilation.hooks.afterProcessAssets.tap({ stage, name }, () => {
               if (mode === 'consume-map') {
-                removeMap(filename);
+                removeMap(resolvedFilename);
               } else {
-                const path = isAbsolute(filename) ? relative(compiler.context, filename) : filename;
-                compilation.emitAsset(path, new sources.RawSource(this.stringifyMap()));
+                const relativeFilename = relative(compiler.context, resolvedFilename);
+                compilation.emitAsset(relativeFilename, new sources.RawSource(this.stringifyMap()));
               }
             });
           });
