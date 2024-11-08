@@ -1,4 +1,4 @@
-const MinifiyCssIdentsPlugin = require('../dist');
+const MinifiyCssIdentsPlugin = require('../dist/MinifiyCssIdentsPlugin');
 
 const resolve = require('path').resolve.bind(null, __dirname, '..');
 

@@ -1,7 +1,7 @@
 // Meant to be imported, not called with jest.mock().
 import { Compiler, LoaderContext, WebpackOptionsNormalized } from 'webpack';
 import EventEmitter from 'events';
-import OriginalMinifiyCssIdentsPlugin from '..';
+import OriginalMinifiyCssIdentsPlugin from '../MinifiyCssIdentsPlugin';
 import { IdentManager } from '../IdentManager';
 
 export class MinifiyCssIdentsPlugin extends OriginalMinifiyCssIdentsPlugin {

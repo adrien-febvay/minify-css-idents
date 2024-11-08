@@ -1,6 +1,6 @@
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const SourceMapDevToolPlugin = require('webpack').SourceMapDevToolPlugin;
-const MinifiyCssIdentsPlugin = require('../dist');
+const MinifiyCssIdentsPlugin = require('../dist/MinifiyCssIdentsPlugin');
 
 const resolve = require('path').resolve.bind(null, __dirname, '..');
 
