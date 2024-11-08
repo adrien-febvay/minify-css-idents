@@ -8,7 +8,7 @@ export class IdentManager {
   public lastIdent: string[];
   public identMap: IdentManager.Map = {};
 
-  public constructor(options?: IdentManager.Options) {
+  public constructor(options?: IdentManager.Options | null) {
     if (options?.exclude?.filter((ident) => /^\*|\*./.test(ident)).length) {
       const details = 'The * wildchar can only be used at the end of an identifier';
       throw new MinifyCssIdentsPluginError('Invalid "exclude" option', details);

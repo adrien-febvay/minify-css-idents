@@ -12,7 +12,7 @@ class MinifyCssIdentsPlugin extends Module {
   protected applied = false;
   protected enabled: boolean;
 
-  public constructor(options?: MinifyCssIdentsPlugin.Options) {
+  public constructor(options?: MinifyCssIdentsPlugin.Options | null) {
     super('css/minify-ident');
     this.identManager = new IdentManager(options);
     this.options = Object.freeze({
