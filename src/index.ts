@@ -12,7 +12,7 @@ class MinifiyCssIdentsPlugin extends Module {
   protected applied = false;
   protected enabled: boolean;
 
-  public constructor(options?: MinifiyCssIdentsPlugin.Options) {
+  public constructor(options?: MinifiyCssIdentsPlugin.Options | null) {
     super('css/minify-ident');
     this.identManager = new IdentManager(options);
     this.options = Object.freeze({

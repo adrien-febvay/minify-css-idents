@@ -1,65 +1,11 @@
-import { Compiler, LoaderContext, WebpackOptionsNormalized, sources } from 'webpack';
+import originalFs from 'fs';
 import { join } from 'path';
-import fs from 'fs';
-import EventEmitter from 'events';
-import OriginalMinifiyCssIdentsPlugin from '.';
+import { sources } from 'webpack';
+import { MinifiyCssIdentsPlugin } from './__mocks__/MinifiyCssIdentsPlugin';
 
-class MinifiyCssIdentsPlugin extends OriginalMinifiyCssIdentsPlugin {
-  public mockedApply(webpackOptions?: Partial<WebpackOptionsNormalized>) {
-    const compiler = mockCompiler(webpackOptions);
-    super.apply(compiler);
-    return compiler;
-  }
-
-  public mockedGetLocalIdent(resourcePath: string, localIdentName: string, localName: string) {
-    return this.getLocalIdent({ resourcePath } as LoaderContext<object>, localIdentName, localName, {});
-  }
-
-  public getEnabled() {
-    return this.enabled;
-  }
-
-  public getIdentManager() {
-    return this.identManager;
-  }
-}
-
-function mockCompiler(webpackOptions: Partial<WebpackOptionsNormalized> = {}) {
-  const beforeCompile = new FakeHook();
-  const compilation = new CompilationHook();
-  const options = { ...webpackOptions, mode: webpackOptions.mode ?? 'production' };
-  const fakeCompiler = { context: '/default-context', hooks: { beforeCompile, compilation }, options };
-  return fakeCompiler as Compiler & typeof fakeCompiler;
-}
-
-class FakeHook<TapType = string> extends EventEmitter {
-  public emit() {
-    return super.emit('emit');
-  }
-
-  public get listener() {
-    return this.listeners('emit')[0];
-  }
-
-  public listenerCount() {
-    return super.listenerCount('emit');
-  }
-
-  public tap(_type: TapType, callback: (hook: this) => void) {
-    this.on('emit', () => callback.call(null, this));
-  }
-}
-
-class CompilationHook extends FakeHook<string> {
-  public readonly hooks = { afterProcessAssets: new FakeHook<{ stage: number; name: string }>() };
-
-  public emitAsset = jest.fn();
-
-  public emit() {
-    super.emit();
-    return this.hooks.afterProcessAssets.emit();
-  }
-}
+jest.mock('css-loader');
+jest.mock('fs');
+const fs = jest.requireMock<{ [Key in keyof typeof originalFs]: jest.Mock }>('fs');
 
 const someOptions = {
   enabled: true,
@@ -67,11 +13,6 @@ const someOptions = {
   mapIndent: 4,
   mode: 'extend-map',
 } as const;
-
-jest.mock('css-loader');
-
-jest.mock('fs');
-const mockedFs = jest.requireMock<{ [Key in keyof typeof fs]: jest.Mock }>('fs');
 
 let consoleWarnSpy: jest.SpyInstance<void, Parameters<Console['warn']>, unknown>;
 
@@ -101,21 +42,21 @@ describe('Check MinifiyCssIdentsPlugin plugin', () => {
 
   it('Plug-in "enabled" state is resolved', () => {
     const minifyCssIdents1 = new MinifiyCssIdentsPlugin(someOptions);
-    minifyCssIdents1.mockedApply();
-    expect(minifyCssIdents1.getEnabled()).toBe(someOptions.enabled);
+    minifyCssIdents1.apply();
+    expect(minifyCssIdents1.enabled).toBe(someOptions.enabled);
     const minifyCssIdents2 = new MinifiyCssIdentsPlugin();
-    minifyCssIdents2.mockedApply();
-    expect(minifyCssIdents2.getEnabled()).toBe(true);
-    const minifyCssIdents3 = new MinifiyCssIdentsPlugin();
-    minifyCssIdents3.mockedApply({ mode: 'development' });
-    expect(minifyCssIdents3.getEnabled()).toBe(false);
+    minifyCssIdents2.apply();
+    expect(minifyCssIdents2.enabled).toBe(true);
+    const minifyCssIdents3 = new MinifiyCssIdentsPlugin(null, { mode: 'development' });
+    minifyCssIdents3.apply();
+    expect(minifyCssIdents3.enabled).toBe(false);
   });
 
   it('Plug-in "enabled" state is effective', () => {
     const minifyCssIdents = new MinifiyCssIdentsPlugin({ enabled: false });
-    const compiler = minifyCssIdents.mockedApply();
-    minifyCssIdents.mockedGetLocalIdent('some-path', 'n/a', 'some-name');
-    expect(minifyCssIdents.getIdentManager().identMap).toStrictEqual({});
+    const compiler = minifyCssIdents.apply();
+    minifyCssIdents.getLocalIdent('some-path', 'n/a', 'some-name');
+    expect(minifyCssIdents.identManager.identMap).toStrictEqual({});
     expect(compiler.hooks.beforeCompile.listenerCount()).toBe(0);
     expect(compiler.hooks.compilation.listenerCount()).toBe(0);
     expect(compiler.hooks.compilation.hooks.afterProcessAssets.listenerCount()).toBe(0);
@@ -123,45 +64,45 @@ describe('Check MinifiyCssIdentsPlugin plugin', () => {
 
   it('Idents are made from context', () => {
     const minifyCssIdents1 = new MinifiyCssIdentsPlugin();
-    minifyCssIdents1.mockedGetLocalIdent('some-path', 'n/a', 'some-name');
-    expect(minifyCssIdents1.getIdentManager().identMap).toStrictEqual({ '___some-path__some-name': 'a' });
+    minifyCssIdents1.getLocalIdent('some-path', 'n/a', 'some-name');
+    expect(minifyCssIdents1.identManager.identMap).toStrictEqual({ '___some-path__some-name': 'a' });
     const minifyCssIdents2 = new MinifiyCssIdentsPlugin({ enabled: false });
-    expect(minifyCssIdents2.mockedGetLocalIdent('some-path', 'n/a', 'some-name')).toBe('___some-path__some-name');
+    expect(minifyCssIdents2.getLocalIdent('some-path', 'n/a', 'some-name')).toBe('___some-path__some-name');
   });
 
   it('Ident map is loaded', () => {
-    mockedFs.readFileSync.mockImplementation(() => '{"a":"b"}');
+    fs.readFileSync.mockImplementation(() => '{"a":"b"}');
     const minifyCssIdents = new MinifiyCssIdentsPlugin({ filename: 'some-file' });
-    minifyCssIdents.mockedApply().hooks.beforeCompile.emit();
-    expect(mockedFs.readFileSync).toHaveBeenCalledTimes(1);
-    expect(mockedFs.readFileSync).toHaveBeenCalledWith('some-file', 'utf-8');
-    expect(minifyCssIdents.getIdentManager().identMap).toStrictEqual({ a: 'b' });
+    minifyCssIdents.apply().hooks.beforeCompile.emit();
+    expect(fs.readFileSync).toHaveBeenCalledTimes(1);
+    expect(fs.readFileSync).toHaveBeenCalledWith('some-file', 'utf-8');
+    expect(minifyCssIdents.identManager.identMap).toStrictEqual({ a: 'b' });
   });
 
   it('A non-existing ident map is ignored', () => {
-    mockedFs.readFileSync.mockImplementation(() => {
+    fs.readFileSync.mockImplementation(() => {
       throw Object.assign(new Error(), { code: 'ENOENT' });
     });
     const minifyCssIdents = new MinifiyCssIdentsPlugin({ filename: 'some-file' });
-    const compiler = minifyCssIdents.mockedApply();
+    const compiler = minifyCssIdents.apply();
     const beforeCompile = compiler.hooks.beforeCompile.listener;
     expect(beforeCompile).not.toThrow();
   });
 
   it('A non-readable ident map is rejected', () => {
-    mockedFs.readFileSync.mockImplementation(() => {
+    fs.readFileSync.mockImplementation(() => {
       throw new Error();
     });
     const minifyCssIdents = new MinifiyCssIdentsPlugin({ filename: 'some-file' });
-    const compiler = minifyCssIdents.mockedApply();
+    const compiler = minifyCssIdents.apply();
     const beforeCompile = compiler.hooks.beforeCompile.listener;
     expect(beforeCompile).toThrow('Failure to read some-file\n  Error');
   });
 
   it('A non-parsable ident map is rejected', () => {
-    mockedFs.readFileSync.mockImplementation(() => 'non-json');
+    fs.readFileSync.mockImplementation(() => 'non-json');
     const minifyCssIdents = new MinifiyCssIdentsPlugin({ filename: 'some-file' });
-    const compiler = minifyCssIdents.mockedApply();
+    const compiler = minifyCssIdents.apply();
     const beforeCompile = compiler.hooks.beforeCompile.listener;
     expect(beforeCompile).toThrow(
       'Failure to parse some-file\n  SyntaxError: Unexpected token \'o\', "non-json" is not valid JSON',
@@ -170,11 +111,11 @@ describe('Check MinifiyCssIdentsPlugin plugin', () => {
 
   it('The ident map is saved', () => {
     const minifyCssIdents = new MinifiyCssIdentsPlugin({ filename: 'some-file', mapIndent: 0 });
-    const identManager = minifyCssIdents.getIdentManager();
+    const identManager = minifyCssIdents.identManager;
     identManager.generateIdent('alpha');
     identManager.generateIdent('beta');
     identManager.generateIdent('alpha');
-    const { compilation } = minifyCssIdents.mockedApply().hooks;
+    const { compilation } = minifyCssIdents.apply().hooks;
     compilation.emitAsset.mockImplementation();
     compilation.emit();
     expect(compilation.emitAsset).toHaveBeenCalledTimes(1);
@@ -186,27 +127,27 @@ describe('Check MinifiyCssIdentsPlugin plugin', () => {
 
   it('The ident map is saved using an absolute path', () => {
     const minifyCssIdents = new MinifiyCssIdentsPlugin({ filename: '/some-file' });
-    const { compilation } = minifyCssIdents.mockedApply().hooks;
+    const { compilation } = minifyCssIdents.apply().hooks;
     compilation.emitAsset.mockImplementation();
     compilation.emit();
     expect(compilation.emitAsset).toHaveBeenCalledWith(join('..', 'some-file'), new sources.RawSource('{}\n'));
   });
 
   it('The ident map is removed', () => {
-    mockedFs.rmSync.mockImplementation();
+    fs.rmSync.mockImplementation();
     const minifyCssIdents = new MinifiyCssIdentsPlugin({ filename: 'some-file', mode: 'consume-map' });
-    minifyCssIdents.mockedApply().hooks.compilation.emit();
-    expect(mockedFs.rmSync).toHaveBeenCalledTimes(1);
-    expect(mockedFs.rmSync).toHaveBeenCalledWith('some-file');
+    minifyCssIdents.apply().hooks.compilation.emit();
+    expect(fs.rmSync).toHaveBeenCalledTimes(1);
+    expect(fs.rmSync).toHaveBeenCalledWith('some-file');
   });
 
   it('Warning is issued for ident map removal failure', () => {
     consoleWarnSpy.mockImplementation();
-    mockedFs.rmSync.mockImplementation(() => {
+    fs.rmSync.mockImplementation(() => {
       throw new Error();
     });
     const minifyCssIdents = new MinifiyCssIdentsPlugin({ filename: 'some-file', mode: 'consume-map' });
-    minifyCssIdents.mockedApply().hooks.compilation.emit();
+    minifyCssIdents.apply().hooks.compilation.emit();
     expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
     expect(consoleWarnSpy).toHaveBeenCalledWith('Failure to remove CSS identifier map file some-file\n  Error');
   });
