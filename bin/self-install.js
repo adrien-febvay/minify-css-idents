@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const resolve = (...pathname) => path.resolve(__dirname, ...pathname);
+const resolve = (...pathname) => path.resolve(__dirname, '..', ...pathname);
 
 const { name, version, main } = JSON.parse(fs.readFileSync(resolve('package.json')));
 const dir = resolve('node_modules', name);

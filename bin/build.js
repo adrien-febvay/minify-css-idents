@@ -5,7 +5,7 @@ const os = require('os');
 const path = require('path');
 const { rimrafSync } = require('rimraf');
 
-const resolve = (...args) => path.resolve(__dirname, ...args);
+const resolve = (...args) => path.resolve(__dirname, '..', ...args);
 const { join, sep } = path;
 
 function empty(path) {
