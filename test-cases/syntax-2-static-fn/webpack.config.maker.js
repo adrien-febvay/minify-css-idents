@@ -4,7 +4,6 @@ const dirs = require('../dirs');
 
 function webpackConfig(index, mode) {
   const { context, entry, filename, localIdentContext, path } = dirs(__dirname, index);
-  const minifyCssIdents = new MinifyCssIdentsPlugin({ filename, mode });
   
   return {
     context,
@@ -26,7 +25,7 @@ function webpackConfig(index, mode) {
               options: {
                 modules: {
                   exportLocalsConvention: 'camelCase',
-                  getLocalIdent: minifyCssIdents.getLocalIdent,
+                  getLocalIdent: MinifyCssIdentsPlugin.getLocalIdent,
                   localIdentContext,
                   localIdentName: '[path]___[name]__[local]',
                   namedExport: index === 1 ? false : void 0,
@@ -47,7 +46,7 @@ function webpackConfig(index, mode) {
     },
     plugins: [
       ...(index === 1 ? [new MiniCssExtractPlugin({ filename: '[name].min.css' })] : []),
-      minifyCssIdents
+      new MinifyCssIdentsPlugin({ filename, mode }),
     ],
     resolve: {
       extensions: ['.js'],

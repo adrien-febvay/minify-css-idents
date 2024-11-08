@@ -29,20 +29,10 @@ npm install --save-dev minify-css-idents
 
 This is the typical configuration that should be compatible all use cases.
 
-First, import and instanciate the minifier. 
+First, import the minifier. 
 
 ```js
-<<<<<<< HEAD
 const MinifyCssIdentsPlugin = require("minify-css-idents");
-const minifyCssIdentsPlugin = new MinifyCssIdentsPlugin({
-  filename: "resolved-path-to/idents.map.json",
-=======
-const MinifyCssIdentsPlugin = require("minify-css-idents");
-const minifyCssIdentsPlugin = new MinifyCssIdentsPlugin({
-  filename: "path-to/idents.map.json",
->>>>>>> 67b7dc2 (Map filename can now be relative to Webpack's context)
-  exclude: ["global-identifiers-here"]
-});
 ```
 
 Then set `getLocalIdent` option of the `css-loader`.
@@ -58,7 +48,7 @@ module.exports = {
             loader: "css-loader",
             options: {
               modules: {
-                getLocalIdent: minifyCssIdentsPlugin.getLocalIdent,
+                getLocalIdent: MinifyCssIdentsPlugin.getLocalIdent,
               }
             }
           }
@@ -74,31 +64,23 @@ Finally, add the minifier instance to the plugins.
 ```js
 module.exports = {
   plugins: [
-    minifyCssIdentsPlugin
+    new MinifyCssIdentsPlugin({
+      filename: "path-to/idents.map.json",
+      exclude: ["global-identifiers-here"]
+    })
   ]
 };
 ```
 
-If your project has a unique build step, thus using Webpack a single time, and you don't want a map file to be emitted, you may omit the options when instanciating `MinifyCssIdentsPlugin`.
-
-Omitting to add its instance in Webpack's `plugins` though will have the minifier active even on the development mode, which is not ideal when trying to debug the UI layout since CSS identifiers would be changed.
+If your project has a unique build step, thus using Webpack a single time, and you don't want a map file to be emitted or specify any option, you may omit the last step.
 
 ## Options
 
 Available options to specify in the instanciation of the minifier:
 
 ```js
-<<<<<<< HEAD
-<<<<<<< HEAD
-const minifyCssIdentsPlugin = new MinifyCssIdentsPlugin({
-  context: "resolved-path-to-the-first-source-to-build",
-=======
-const minifyCssIdentsPlugin = new MinifyCssIdentsPlugin({
->>>>>>> 78ca094 (Unminified idents are now made by css-loader's defaultGetLocalIdent)
-=======
 const minifyCssIdentsPlugin = new MinifyCssIdentsPlugin({
   enabled: true,
->>>>>>> 6179655 (New "enabled" option to toggle the plug-in, by default true on production)
   exclude: ["some-ident", "some-ident-prefix-*"],
   filename: "path-to/idents.map.json",
   mapIndent: 2,

@@ -3,6 +3,8 @@
 - New "enabled" option to toggle the plug-in, by default true on production
 - Add "app" and "root" to default excluded identifiers
 - Map filename can now be relative to Webpack's context
+- Allow the getLocalIdent to be accessed statically from the plugin class
+- Instanciating and registering the plug-in is now optional
 
 # Version 0.3.0
 - Use "compilation" and "afterProcessAssets" hooks instead of "afterEmit"

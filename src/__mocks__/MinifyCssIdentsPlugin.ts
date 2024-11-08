@@ -8,6 +8,7 @@ import { IdentManager } from '../IdentManager';
 export class MinifyCssIdentsPlugin extends OriginalMinifyCssIdentsPlugin {
   public declare enabled: boolean;
   public declare identManager: IdentManager;
+  public declare getLocalIdentCache?: (typeof MinifyCssIdentsPlugin)['getLocalIdent'];
   public webpackOptions?: Partial<WebpackOptionsNormalized>;
 
   public constructor(
@@ -29,10 +30,23 @@ export class MinifyCssIdentsPlugin extends OriginalMinifyCssIdentsPlugin {
     function getLocalIdent(resourcePath: string, localIdentName: string, localName: string): string;
     function getLocalIdent(context: LoaderContext<object>, localIdentName: string, localName: string): string;
     function getLocalIdent(arg0: string | LoaderContext<object>, localIdentName: string, localName: string) {
-      const context = typeof arg0 === 'object' ? arg0 : ({ resourcePath: arg0 } as LoaderContext<object>);
+      const contextArg = typeof arg0 === 'object' ? arg0 : { resourcePath: arg0 };
+      const context = { mode: 'production', ...contextArg } as LoaderContext<object>;
       return superGetLocalIdent(context, localIdentName, localName, {});
     }
     return getLocalIdent;
+  }
+
+  public static getLocalIdent(resourcePath: string, localIdentName: string, localName: string): string;
+  public static getLocalIdent(context: LoaderContext<object>, localIdentName: string, localName: string): string;
+  public static getLocalIdent(arg0: string | LoaderContext<object>, localIdentName: string, localName: string) {
+    const contextArg = typeof arg0 === 'object' ? arg0 : { resourcePath: arg0 };
+    const context = { mode: 'production', ...contextArg } as LoaderContext<object>;
+    return OriginalMinifyCssIdentsPlugin.getLocalIdent(context, localIdentName, localName, {});
+  }
+
+  public static get implicitInstance() {
+    return OriginalMinifyCssIdentsPlugin.implicitInstance;
   }
 }
 
@@ -40,7 +54,7 @@ function mockCompiler(webpackOptions: Partial<WebpackOptionsNormalized> = {}, co
   const beforeCompile = new FakeHook();
   const compilation = new CompilationHook();
   const hooks = { ...compiler?.hooks, beforeCompile, compilation };
-  const options = { ...compiler?.options, ...webpackOptions, mode: webpackOptions.mode ?? 'production' };
+  const options = { mode: 'production', ...compiler?.options, ...webpackOptions };
   const fakeCompiler = { context: join(sep, 'default-context'), ...compiler, hooks, options };
   return fakeCompiler as Compiler & typeof fakeCompiler;
 }

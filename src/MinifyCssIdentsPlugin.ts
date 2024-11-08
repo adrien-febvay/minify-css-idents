@@ -10,10 +10,12 @@ class MinifyCssIdentsPlugin extends Module {
   public readonly options: MinifyCssIdentsPlugin.Options.Resolved;
   protected readonly identManager: IdentManager;
   protected applied = false;
-  protected enabled: boolean;
+  protected enabled: boolean | null;
+  protected getLocalIdentCache?: (typeof MinifyCssIdentsPlugin)['getLocalIdent'];
 
   public constructor(options?: MinifyCssIdentsPlugin.Options | null) {
     super('css/minify-ident');
+    MinifyCssIdentsPlugin.implicitInstance = this;
     this.identManager = new IdentManager(options);
     this.options = Object.freeze({
       enabled: options?.enabled ?? null,
@@ -22,11 +24,12 @@ class MinifyCssIdentsPlugin extends Module {
       mode: options?.mode ?? 'default',
       ...this.identManager.options,
     });
-    this.enabled = this.options.enabled ?? true;
+    this.enabled = this.options.enabled;
   }
 
   public get getLocalIdent() {
-    const { identManager, enabled } = this;
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const plugin = this;
     function getLocalIdent(
       this: unknown,
       context: LoaderContext<object>,
@@ -35,13 +38,15 @@ class MinifyCssIdentsPlugin extends Module {
       options: object,
     ): string;
     function getLocalIdent(this: unknown, ...args: Parameters<typeof defaultGetLocalIdent>) {
+      plugin.enabled ??= args[0].mode === 'production';
       // For some reason, defaultGetLocalIdent does not get all the job done
       // and does not replace [local] in the ident template nor escape the resulting ident.
       const defaultLocalIdent = defaultGetLocalIdent.apply(this, args).replace(/\[local]/gi, escape(args[2]));
       const escapedLocalIdent = escapeLocalIdent(defaultLocalIdent);
-      return enabled ? identManager.generateIdent(escapedLocalIdent) : escapedLocalIdent;
+      return plugin.enabled ? plugin.identManager.generateIdent(escapedLocalIdent) : escapedLocalIdent;
     }
-    return getLocalIdent;
+    this.getLocalIdentCache ??= getLocalIdent;
+    return this.getLocalIdentCache;
   }
 
   public apply(compiler: Compiler) {
@@ -88,6 +93,21 @@ class MinifyCssIdentsPlugin extends Module {
   public static readonly alphabet = IdentManager.alphabet;
 
   public static readonly Error = MinifyCssIdentsPluginError;
+
+  public static getLocalIdent(
+    this: unknown,
+    context: LoaderContext<object>,
+    localIdentName: string,
+    localName: string,
+    options: object,
+  ): string;
+
+  public static getLocalIdent(this: unknown, ...args: Parameters<typeof defaultGetLocalIdent>) {
+    MinifyCssIdentsPlugin.implicitInstance ??= new MinifyCssIdentsPlugin();
+    return MinifyCssIdentsPlugin.implicitInstance.getLocalIdent.apply(this, args);
+  }
+
+  protected static implicitInstance?: MinifyCssIdentsPlugin;
 }
 
 function parseMap(filename: string, bytes: string) {
