@@ -73,9 +73,9 @@ module.exports = {
 };
 ```
 
-If your project has a unique build step, thus using Webpack a single, and you don't want a map file to be emitted, you may omit:
-- The options when instanciating `MinifiyCssIdentsPlugin`;
-- To add its instance in Webpack's `plugins`.
+If your project has a unique build step, thus using Webpack a single time, and you don't want a map file to be emitted, you may omit the options when instanciating `MinifiyCssIdentsPlugin`.
+
+Omitting to add its instance in Webpack's `plugins` though will have the minifier active even on the development mode, which is not ideal when trying to debug the UI layout since CSS identifiers would be changed.
 
 ## Options
 
@@ -83,6 +83,7 @@ Available options to specify in the instanciation of the minifier:
 
 ```js
 const minifyCssIdentsPlugin = new MinifiyCssIdentsPlugin({
+  enabled: true,
   exclude: ["some-ident", "some-ident-prefix-*"],
   filename: "resolved-path-to/idents.map.json",
   mapIndent: 2,
@@ -90,6 +91,14 @@ const minifyCssIdentsPlugin = new MinifiyCssIdentsPlugin({
   startIdent: "some-minified-ident-to-start-with",
 });
 ```
+
+### options.enabled
+
+Default value: `true` on production mode, `false` otherwise.
+
+Enables the minifying of CSS identifiers. By default, the minifying is active on production mode for optimization, but disabled on development mode for debugging purposes.
+
+It is also active by default if `MinifiyCssIdentsPlugin` has not been registered in the "plugins" Webpack option, because then the minifyier has no mean to known in which mode Webpack is running.
 
 ### options.exclude
 

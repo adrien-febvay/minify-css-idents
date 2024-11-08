@@ -10,20 +10,23 @@ class MinifiyCssIdentsPlugin extends Module {
   public readonly options: MinifiyCssIdentsPlugin.Options.Resolved;
   protected readonly identManager: IdentManager;
   protected applied = false;
+  protected enabled: boolean;
 
   public constructor(options?: MinifiyCssIdentsPlugin.Options) {
     super('css/minify-ident');
     this.identManager = new IdentManager(options);
     this.options = Object.freeze({
+      enabled: options?.enabled ?? null,
       filename: options?.filename ?? null,
       mapIndent: options?.mapIndent ?? 2,
       mode: options?.mode ?? 'default',
       ...this.identManager.options,
     });
+    this.enabled = this.options.enabled ?? true;
   }
 
   public get getLocalIdent() {
-    const { identManager } = this;
+    const { identManager, enabled } = this;
     function getLocalIdent(
       this: unknown,
       context: LoaderContext<object>,
@@ -35,15 +38,17 @@ class MinifiyCssIdentsPlugin extends Module {
       // For some reason, defaultGetLocalIdent does not get all the job done
       // and does not replace [local] in the ident template nor escape the resulting ident.
       const defaultLocalIdent = defaultGetLocalIdent.apply(this, args).replace(/\[local]/gi, escape(args[2]));
-      return identManager.generateIdent(escapeLocalIdent(defaultLocalIdent));
+      const escapedLocalIdent = escapeLocalIdent(defaultLocalIdent);
+      return enabled ? identManager.generateIdent(escapedLocalIdent) : escapedLocalIdent;
     }
     return getLocalIdent;
   }
 
   public apply(compiler: Compiler) {
     if (!this.applied) {
-      const { filename, mode } = this.options;
-      if (filename) {
+      const { enabled, filename, mode } = this.options;
+      this.enabled = enabled ?? compiler.options.mode === 'production';
+      if (this.enabled && filename) {
         if (mode === 'default' || mode === 'load-map' || mode === 'extend-map' || mode === 'consume-map') {
           compiler.hooks.beforeCompile.tap(MinifiyCssIdentsPlugin.name, () =>
             this.loadMap(filename, mode === 'default'),
@@ -119,6 +124,7 @@ namespace MinifiyCssIdentsPlugin {
   export type Map = IdentManager.Map;
 
   export interface Options extends IdentManager.Options {
+    enabled?: boolean | null;
     filename?: string | null;
     mapIndent?: number | null;
     mode?: 'default' | 'load-map' | 'extend-map' | 'consume-map' | 'create-map' | null;
@@ -126,6 +132,7 @@ namespace MinifiyCssIdentsPlugin {
 
   export namespace Options {
     export interface Resolved extends IdentManager.Options.Resolved {
+      enabled: boolean | null;
       filename: string | null;
       mapIndent: number;
       mode: 'default' | 'load-map' | 'extend-map' | 'consume-map' | 'create-map';
