@@ -6,7 +6,7 @@
 node_modules/
 /coverage/
 /dist/
-/test/dist*/
+/test-cases/**/dist*/
 /test*.js
 .DS_Store
 *.tgz
