@@ -1,5 +1,7 @@
 const cp = require('child_process');
 const fs = require('fs');
+const path = require('path');
+const resolve = (...pathname) => path.resolve(__dirname, '..', ...pathname);
 
 function kill(status, ...args) {
   if (args.length) {
@@ -10,7 +12,7 @@ function kill(status, ...args) {
 
 let version;
 try {
-  version = JSON.parse(fs.readFileSync('package.json', 'utf-8')).version;
+  version = JSON.parse(fs.readFileSync(resolve('package.json'), 'utf-8')).version;
 } catch (cause) {
   kill(500, 'Failure to get version from package.json\n ', String(cause));
 }
