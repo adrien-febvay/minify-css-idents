@@ -32,14 +32,8 @@ This is the typical configuration that should be compatible all use cases.
 First, import and instanciate the minifier. 
 
 ```js
-<<<<<<< HEAD
 const MinifyCssIdentsPlugin = require("minify-css-idents");
 const minifyCssIdentsPlugin = new MinifyCssIdentsPlugin({
-  context: "resolved-path-to-the-first-source-to-build",
-=======
-const MinifyCssIdentsPlugin = require("minify-css-idents");
-const minifyCssIdentsPlugin = new MinifyCssIdentsPlugin({
->>>>>>> 78ca094 (Unminified idents are now made by css-loader's defaultGetLocalIdent)
   filename: "resolved-path-to/idents.map.json",
   exclude: ["global-identifiers-here"]
 });
@@ -79,9 +73,9 @@ module.exports = {
 };
 ```
 
-If your project has a unique build step, thus using Webpack a single, and you don't want a map file to be emitted, you may omit:
-- The options when instanciating `MinifyCssIdentsPlugin`;
-- To add its instance in Webpack's `plugins`.
+If your project has a unique build step, thus using Webpack a single time, and you don't want a map file to be emitted, you may omit the options when instanciating `MinifyCssIdentsPlugin`.
+
+Omitting to add its instance in Webpack's `plugins` though will have the minifier active even on the development mode, which is not ideal when trying to debug the UI layout since CSS identifiers would be changed.
 
 ## Options
 
@@ -89,11 +83,16 @@ Available options to specify in the instanciation of the minifier:
 
 ```js
 <<<<<<< HEAD
+<<<<<<< HEAD
 const minifyCssIdentsPlugin = new MinifyCssIdentsPlugin({
   context: "resolved-path-to-the-first-source-to-build",
 =======
 const minifyCssIdentsPlugin = new MinifyCssIdentsPlugin({
 >>>>>>> 78ca094 (Unminified idents are now made by css-loader's defaultGetLocalIdent)
+=======
+const minifyCssIdentsPlugin = new MinifyCssIdentsPlugin({
+  enabled: true,
+>>>>>>> 6179655 (New "enabled" option to toggle the plug-in, by default true on production)
   exclude: ["some-ident", "some-ident-prefix-*"],
   filename: "resolved-path-to/idents.map.json",
   mapIndent: 2,
@@ -101,6 +100,14 @@ const minifyCssIdentsPlugin = new MinifyCssIdentsPlugin({
   startIdent: "some-minified-ident-to-start-with",
 });
 ```
+
+### options.enabled
+
+Default value: `true` on production mode, `false` otherwise.
+
+Enables the minifying of CSS identifiers. By default, the minifying is active on production mode for optimization, but disabled on development mode for debugging purposes.
+
+It is also active by default if `MinifyCssIdentsPlugin` has not been registered in the "plugins" Webpack option, because then the minifyier has no mean to known in which mode Webpack is running.
 
 ### options.exclude
 
