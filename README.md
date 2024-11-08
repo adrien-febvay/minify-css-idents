@@ -32,9 +32,15 @@ This is the typical configuration that should be compatible all use cases.
 First, import and instanciate the minifier. 
 
 ```js
+<<<<<<< HEAD
 const MinifyCssIdentsPlugin = require("minify-css-idents");
 const minifyCssIdentsPlugin = new MinifyCssIdentsPlugin({
   filename: "resolved-path-to/idents.map.json",
+=======
+const MinifyCssIdentsPlugin = require("minify-css-idents");
+const minifyCssIdentsPlugin = new MinifyCssIdentsPlugin({
+  filename: "path-to/idents.map.json",
+>>>>>>> 67b7dc2 (Map filename can now be relative to Webpack's context)
   exclude: ["global-identifiers-here"]
 });
 ```
@@ -94,7 +100,7 @@ const minifyCssIdentsPlugin = new MinifyCssIdentsPlugin({
   enabled: true,
 >>>>>>> 6179655 (New "enabled" option to toggle the plug-in, by default true on production)
   exclude: ["some-ident", "some-ident-prefix-*"],
-  filename: "resolved-path-to/idents.map.json",
+  filename: "path-to/idents.map.json",
   mapIndent: 2,
   mode: "default",
   startIdent: "some-minified-ident-to-start-with",
@@ -127,7 +133,7 @@ Future versions of this package should offer better means to avoid overlapping w
 
 Default value: `null`
 
-Resolved pathname to the identifier map file. Useful if:
+Pathname to the identifier map file. Useful if:
 1. Your project has several build steps, using Webpack several times. Then the map file keeps the identifiers consistent across all steps.
 2. You want a map file to be emitted anyway.
 

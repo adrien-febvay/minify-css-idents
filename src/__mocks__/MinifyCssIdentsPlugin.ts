@@ -1,6 +1,7 @@
 // Meant to be imported, not called with jest.mock().
 import { Compiler, LoaderContext, WebpackOptionsNormalized } from 'webpack';
 import EventEmitter from 'events';
+import { join, sep } from 'path';
 import OriginalMinifyCssIdentsPlugin from '../MinifyCssIdentsPlugin';
 import { IdentManager } from '../IdentManager';
 
@@ -40,7 +41,7 @@ function mockCompiler(webpackOptions: Partial<WebpackOptionsNormalized> = {}, co
   const compilation = new CompilationHook();
   const hooks = { ...compiler?.hooks, beforeCompile, compilation };
   const options = { ...compiler?.options, ...webpackOptions, mode: webpackOptions.mode ?? 'production' };
-  const fakeCompiler = { context: '/default-context', ...compiler, hooks, options };
+  const fakeCompiler = { context: join(sep, 'default-context'), ...compiler, hooks, options };
   return fakeCompiler as Compiler & typeof fakeCompiler;
 }
 
