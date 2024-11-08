@@ -15,7 +15,7 @@ export class IdentManager {
     }
     const excludePrefix = options?.exclude?.filter((ident) => /\*$/.test(ident));
     this.options = Object.freeze({
-      exclude: options?.exclude?.filter((ident) => !/\*/.test(ident)) ?? [],
+      exclude: options?.exclude?.filter((ident) => !/\*/.test(ident)) ?? ['app', 'root'],
       excludePrefix: excludePrefix?.map((ident) => ident.slice(0, -1)) ?? ['ad'],
       startIdent: options?.startIdent ?? null,
     });
