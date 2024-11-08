@@ -27,6 +27,13 @@ afterEach(() => {
 });
 
 describe('Check MinifiyCssIdentsPlugin plugin', () => {
+  it('Plug-in instance is registered and defaulted', () => {
+    const fn = () => MinifiyCssIdentsPlugin.getLocalIdent('some-path', 'n/a', 'some-name');
+    expect(fn).not.toThrow();
+    expect(MinifiyCssIdentsPlugin.implicitInstance).not.toBe(void 0);
+    expect(fn).not.toThrow();
+  });
+
   it('Options are defaulted', () => {
     const minifyCssIdents = new MinifiyCssIdentsPlugin();
     expect(minifyCssIdents.options).toMatchObject({

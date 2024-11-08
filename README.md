@@ -29,14 +29,10 @@ npm install --save-dev minify-css-idents
 
 This is the typical configuration that should be compatible all use cases.
 
-First, import and instanciate the minifier. 
+First, import the minifier. 
 
 ```js
 const MinifiyCssIdentsPlugin = require("minify-css-idents");
-const minifyCssIdentsPlugin = new MinifiyCssIdentsPlugin({
-  filename: "path-to/idents.map.json",
-  exclude: ["global-identifiers-here"]
-});
 ```
 
 Then set `getLocalIdent` option of the `css-loader`.
@@ -52,7 +48,7 @@ module.exports = {
             loader: "css-loader",
             options: {
               modules: {
-                getLocalIdent: minifyCssIdentsPlugin.getLocalIdent,
+                getLocalIdent: MinifiyCssIdentsPlugin.getLocalIdent,
               }
             }
           }
@@ -68,14 +64,15 @@ Finally, add the minifier instance to the plugins.
 ```js
 module.exports = {
   plugins: [
-    minifyCssIdentsPlugin
+    new MinifiyCssIdentsPlugin({
+      filename: "path-to/idents.map.json",
+      exclude: ["global-identifiers-here"]
+    })
   ]
 };
 ```
 
-If your project has a unique build step, thus using Webpack a single time, and you don't want a map file to be emitted, you may omit the options when instanciating `MinifiyCssIdentsPlugin`.
-
-Omitting to add its instance in Webpack's `plugins` though will have the minifier active even on the development mode, which is not ideal when trying to debug the UI layout since CSS identifiers would be changed.
+If your project has a unique build step, thus using Webpack a single time, and you don't want a map file to be emitted or specify any option, you may omit the last step.
 
 ## Options
 
