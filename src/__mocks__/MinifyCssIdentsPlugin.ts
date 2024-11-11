@@ -3,11 +3,11 @@ import { Compiler, LoaderContext, WebpackOptionsNormalized } from 'webpack';
 import EventEmitter from 'events';
 import { join, sep } from 'path';
 import OriginalMinifyCssIdentsPlugin from '../MinifyCssIdentsPlugin';
-import { IdentManager } from '../IdentManager';
+import { IdentGenerator } from '../IdentGenerator';
 
 export class MinifyCssIdentsPlugin extends OriginalMinifyCssIdentsPlugin {
   public declare enabled: boolean;
-  public declare identManager: IdentManager;
+  public declare identGenerator: IdentGenerator;
   public declare getLocalIdentCache?: (typeof MinifyCssIdentsPlugin)['getLocalIdent'];
   public webpackOptions?: Partial<WebpackOptionsNormalized>;
 

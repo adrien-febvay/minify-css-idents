@@ -3,12 +3,12 @@ import { isDictLike, type } from './utils';
 
 const alphabet = '0123456789abcdefghijklmnopqrstuvwxyz';
 
-export class IdentManager {
-  public readonly options: IdentManager.Options.Resolved;
+export class IdentGenerator {
+  public readonly options: IdentGenerator.Options.Resolved;
   public lastIdent: string[];
-  public identMap: IdentManager.Map = {};
+  public identMap: IdentGenerator.Map = {};
 
-  public constructor(options?: IdentManager.Options | null) {
+  public constructor(options?: IdentGenerator.Options | null) {
     if (options?.exclude?.filter((ident) => /^\*|\*./.test(ident)).length) {
       const details = 'The * wildchar can only be used at the end of an identifier';
       throw new MinifyCssIdentsPluginError('Invalid "exclude" option', details);
@@ -62,7 +62,7 @@ export class IdentManager {
         throw new MinifyCssIdentsPluginError(`Invalid CSS identifier(s) in ${filename}${invalidIdents}`);
       }
       this.lastIdent = lastIdent.split('');
-      this.identMap = data as IdentManager.Map;
+      this.identMap = data as IdentGenerator.Map;
     } else {
       const details = `Expected string dictionary, got ${type(data)}`;
       throw new MinifyCssIdentsPluginError(`Invalid CSS identifier map in ${filename}`, details);
@@ -81,7 +81,7 @@ export class IdentManager {
   public static readonly alphabet = alphabet;
 }
 
-export namespace IdentManager {
+export namespace IdentGenerator {
   export type Map = { [Key in string]?: string };
 
   export interface Options {
