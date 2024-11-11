@@ -26,8 +26,8 @@ afterEach(() => {
   jest.resetAllMocks();
 });
 
-describe('Check MinifyCssIdentsPlugin plugin', () => {
-  it('Plug-in instance is registered and defaulted', () => {
+describe('Check MinifyCssIdentsPlugin class', () => {
+  it('Instance is registered and defaulted', () => {
     const fn = () => MinifyCssIdentsPlugin.getLocalIdent('some-path', 'n/a', 'some-name');
     expect(fn).not.toThrow();
     expect(MinifyCssIdentsPlugin.implicitInstance).not.toBe(void 0);
@@ -92,58 +92,20 @@ describe('Check MinifyCssIdentsPlugin plugin', () => {
   });
 
   it('Ident map is loaded', () => {
-    fs.readFileSync.mockImplementation(() => '{"a":"b"}');
+    fs.readFileSync.mockImplementation(() => '{}');
     const minifyCssIdents = new MinifyCssIdentsPlugin({ filename: someFile });
     minifyCssIdents.apply().hooks.beforeCompile.emit();
     expect(fs.readFileSync).toHaveBeenCalledTimes(1);
     expect(fs.readFileSync).toHaveBeenCalledWith(someFile, 'utf-8');
-    expect(minifyCssIdents.identGenerator.identMap).toStrictEqual({ a: 'b' });
-  });
-
-  it('A non-existing ident map is ignored', () => {
-    fs.readFileSync.mockImplementation(() => {
-      throw Object.assign(new Error(), { code: 'ENOENT' });
-    });
-    const minifyCssIdents = new MinifyCssIdentsPlugin({ filename: someFile });
-    const compiler = minifyCssIdents.apply();
-    const beforeCompile = compiler.hooks.beforeCompile.listener;
-    expect(beforeCompile).not.toThrow();
-  });
-
-  it('A non-readable ident map is rejected', () => {
-    fs.readFileSync.mockImplementation(() => {
-      throw new Error();
-    });
-    const minifyCssIdents = new MinifyCssIdentsPlugin({ filename: someFile });
-    const compiler = minifyCssIdents.apply();
-    const beforeCompile = compiler.hooks.beforeCompile.listener;
-    expect(beforeCompile).toThrow(`Failure to read ${someFile}\n  Error`);
-  });
-
-  it('A non-parsable ident map is rejected', () => {
-    fs.readFileSync.mockImplementation(() => 'non-json');
-    const minifyCssIdents = new MinifyCssIdentsPlugin({ filename: someFile });
-    const compiler = minifyCssIdents.apply();
-    const beforeCompile = compiler.hooks.beforeCompile.listener;
-    expect(beforeCompile).toThrow(
-      `Failure to parse ${someFile}\n  SyntaxError: Unexpected token 'o', "non-json" is not valid JSON`,
-    );
   });
 
   it('The ident map is saved', () => {
     const minifyCssIdents = new MinifyCssIdentsPlugin({ filename: someFile, mapIndent: 0 });
-    const identGenerator = minifyCssIdents.identGenerator;
-    identGenerator.generateIdent('alpha');
-    identGenerator.generateIdent('beta');
-    identGenerator.generateIdent('alpha');
     const { compilation } = minifyCssIdents.apply().hooks;
     compilation.emitAsset.mockImplementation();
     compilation.emit();
     expect(compilation.emitAsset).toHaveBeenCalledTimes(1);
-    expect(compilation.emitAsset).toHaveBeenCalledWith(
-      join('..', someFile),
-      new sources.RawSource('{"alpha":"a","beta":"b"}\n'),
-    );
+    expect(compilation.emitAsset).toHaveBeenCalledWith(join('..', someFile), new sources.RawSource('{}\n'));
   });
 
   it('The ident map is removed', () => {

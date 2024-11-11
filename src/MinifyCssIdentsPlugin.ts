@@ -1,9 +1,9 @@
-import { readFileSync, rmSync } from 'fs';
+import { rmSync } from 'fs';
 import { isAbsolute, join, relative } from 'path';
 import { Compilation, Compiler, LoaderContext, Module, sources } from 'webpack';
 import { IdentGenerator as IdentGeneratorImport } from './IdentGenerator';
 import { MinifyCssIdentsError } from './MinifyCssIdentsError';
-import { escape, escapeLocalIdent, isError } from './utils';
+import { escape, escapeLocalIdent } from './utils';
 import { defaultGetLocalIdent } from 'css-loader';
 
 class MinifyCssIdentsPlugin extends Module {
@@ -19,7 +19,6 @@ class MinifyCssIdentsPlugin extends Module {
     this.options = Object.freeze({
       enabled: options?.enabled ?? null,
       filename: options?.filename ?? null,
-      mapIndent: options?.mapIndent ?? 2,
       mode: options?.mode ?? 'default',
       ...this.identGenerator.options,
     });
@@ -57,7 +56,7 @@ class MinifyCssIdentsPlugin extends Module {
         const resolvedFilename = isAbsolute(filename) ? filename : join(compiler.context, filename);
         if (mode === 'default' || mode === 'load-map' || mode === 'extend-map' || mode === 'consume-map') {
           compiler.hooks.beforeCompile.tap(MinifyCssIdentsPlugin.name, () =>
-            this.loadMap(resolvedFilename, mode === 'default'),
+            this.identGenerator.loadMap(resolvedFilename, mode === 'default'),
           );
         }
         if (mode !== 'load-map') {
@@ -69,7 +68,7 @@ class MinifyCssIdentsPlugin extends Module {
                 removeMap(resolvedFilename);
               } else {
                 const relativeFilename = relative(compiler.context, resolvedFilename);
-                compilation.emitAsset(relativeFilename, new sources.RawSource(this.stringifyMap()));
+                compilation.emitAsset(relativeFilename, new sources.RawSource(this.identGenerator.stringifyMap()));
               }
             });
           });
@@ -77,17 +76,6 @@ class MinifyCssIdentsPlugin extends Module {
       }
       this.applied = true;
     }
-  }
-
-  protected loadMap(filename: string, ignoreNoEnt?: boolean) {
-    const mapBytes = readMap(filename, ignoreNoEnt);
-    if (mapBytes !== null) {
-      this.identGenerator.loadMap(parseMap(filename, mapBytes), filename);
-    }
-  }
-
-  protected stringifyMap() {
-    return `${JSON.stringify(this.identGenerator.identMap, null, this.options.mapIndent)}\n`;
   }
 
   public static readonly Error = MinifyCssIdentsError;
@@ -107,26 +95,6 @@ class MinifyCssIdentsPlugin extends Module {
   public static getLocalIdent(this: unknown, ...args: Parameters<typeof defaultGetLocalIdent>) {
     MinifyCssIdentsPlugin.implicitInstance ??= new MinifyCssIdentsPlugin();
     return MinifyCssIdentsPlugin.implicitInstance.getLocalIdent.apply(this, args);
-  }
-}
-
-function parseMap(filename: string, bytes: string) {
-  try {
-    return JSON.parse(bytes);
-  } catch (cause) {
-    throw new MinifyCssIdentsError(`Failure to parse ${filename}`, cause, parseMap);
-  }
-}
-
-function readMap(filename: string, ignoreNoEnt?: boolean) {
-  try {
-    return readFileSync(filename, 'utf-8');
-  } catch (cause) {
-    if (ignoreNoEnt && isError(cause) && cause.code === 'ENOENT') {
-      return null;
-    } else {
-      throw new MinifyCssIdentsError(`Failure to read ${filename}`, cause, parseMap);
-    }
   }
 }
 
@@ -159,7 +127,6 @@ namespace MinifyCssIdentsPlugin {
   export interface Options extends IdentGenerator.Options {
     enabled?: boolean | null;
     filename?: string | null;
-    mapIndent?: number | null;
     mode?: 'default' | 'load-map' | 'extend-map' | 'consume-map' | 'create-map' | null;
   }
 
@@ -167,7 +134,6 @@ namespace MinifyCssIdentsPlugin {
     export interface Resolved extends IdentGenerator.Options.Resolved {
       enabled: boolean | null;
       filename: string | null;
-      mapIndent: number;
       mode: 'default' | 'load-map' | 'extend-map' | 'consume-map' | 'create-map';
     }
   }
