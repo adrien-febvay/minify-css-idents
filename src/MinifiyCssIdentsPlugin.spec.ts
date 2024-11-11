@@ -65,7 +65,7 @@ describe('Check MinifiyCssIdentsPlugin plugin', () => {
     const minifyCssIdents = new MinifiyCssIdentsPlugin({ enabled: false });
     const compiler = minifyCssIdents.apply();
     minifyCssIdents.getLocalIdent('some-path', 'n/a', 'some-name');
-    expect(minifyCssIdents.identManager.identMap).toStrictEqual({});
+    expect(minifyCssIdents.identGenerator.identMap).toStrictEqual({});
     expect(compiler.hooks.beforeCompile.listenerCount()).toBe(0);
     expect(compiler.hooks.compilation.listenerCount()).toBe(0);
     expect(compiler.hooks.compilation.hooks.afterProcessAssets.listenerCount()).toBe(0);
@@ -86,7 +86,7 @@ describe('Check MinifiyCssIdentsPlugin plugin', () => {
   it('Idents are made from context', () => {
     const minifyCssIdents1 = new MinifiyCssIdentsPlugin();
     minifyCssIdents1.getLocalIdent('some-path', 'n/a', 'some-name');
-    expect(minifyCssIdents1.identManager.identMap).toStrictEqual({ '___some-path__some-name': 'a' });
+    expect(minifyCssIdents1.identGenerator.identMap).toStrictEqual({ '___some-path__some-name': 'a' });
     const minifyCssIdents2 = new MinifiyCssIdentsPlugin({ enabled: false });
     expect(minifyCssIdents2.getLocalIdent('some-path', 'n/a', 'some-name')).toBe('___some-path__some-name');
   });
@@ -97,7 +97,7 @@ describe('Check MinifiyCssIdentsPlugin plugin', () => {
     minifyCssIdents.apply().hooks.beforeCompile.emit();
     expect(fs.readFileSync).toHaveBeenCalledTimes(1);
     expect(fs.readFileSync).toHaveBeenCalledWith(someFile, 'utf-8');
-    expect(minifyCssIdents.identManager.identMap).toStrictEqual({ a: 'b' });
+    expect(minifyCssIdents.identGenerator.identMap).toStrictEqual({ a: 'b' });
   });
 
   it('A non-existing ident map is ignored', () => {
@@ -132,10 +132,10 @@ describe('Check MinifiyCssIdentsPlugin plugin', () => {
 
   it('The ident map is saved', () => {
     const minifyCssIdents = new MinifiyCssIdentsPlugin({ filename: someFile, mapIndent: 0 });
-    const identManager = minifyCssIdents.identManager;
-    identManager.generateIdent('alpha');
-    identManager.generateIdent('beta');
-    identManager.generateIdent('alpha');
+    const identGenerator = minifyCssIdents.identGenerator;
+    identGenerator.generateIdent('alpha');
+    identGenerator.generateIdent('beta');
+    identGenerator.generateIdent('alpha');
     const { compilation } = minifyCssIdents.apply().hooks;
     compilation.emitAsset.mockImplementation();
     compilation.emit();

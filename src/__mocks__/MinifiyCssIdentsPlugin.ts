@@ -3,11 +3,11 @@ import { Compiler, LoaderContext, WebpackOptionsNormalized } from 'webpack';
 import EventEmitter from 'events';
 import { join, sep } from 'path';
 import OriginalMinifiyCssIdentsPlugin from '../MinifiyCssIdentsPlugin';
-import { IdentManager } from '../IdentManager';
+import { IdentGenerator } from '../IdentGenerator';
 
 export class MinifiyCssIdentsPlugin extends OriginalMinifiyCssIdentsPlugin {
   public declare enabled: boolean;
-  public declare identManager: IdentManager;
+  public declare identGenerator: IdentGenerator;
   public declare getLocalIdentCache?: (typeof MinifiyCssIdentsPlugin)['getLocalIdent'];
   public webpackOptions?: Partial<WebpackOptionsNormalized>;
 

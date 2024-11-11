@@ -1,14 +1,14 @@
 import { readFileSync, rmSync } from 'fs';
 import { isAbsolute, join, relative } from 'path';
 import { Compilation, Compiler, LoaderContext, Module, sources } from 'webpack';
-import { IdentManager } from './IdentManager';
+import { IdentGenerator } from './IdentGenerator';
 import { MinifiyCssIdentsPluginError } from './Error';
 import { escape, escapeLocalIdent, isError } from './utils';
 import { defaultGetLocalIdent } from 'css-loader';
 
 class MinifiyCssIdentsPlugin extends Module {
   public readonly options: MinifiyCssIdentsPlugin.Options.Resolved;
-  protected readonly identManager: IdentManager;
+  protected readonly identGenerator: IdentGenerator;
   protected applied = false;
   protected enabled: boolean | null;
   protected getLocalIdentCache?: (typeof MinifiyCssIdentsPlugin)['getLocalIdent'];
@@ -16,13 +16,13 @@ class MinifiyCssIdentsPlugin extends Module {
   public constructor(options?: MinifiyCssIdentsPlugin.Options | null) {
     super('css/minify-ident');
     MinifiyCssIdentsPlugin.implicitInstance = this;
-    this.identManager = new IdentManager(options);
+    this.identGenerator = new IdentGenerator(options);
     this.options = Object.freeze({
       enabled: options?.enabled ?? null,
       filename: options?.filename ?? null,
       mapIndent: options?.mapIndent ?? 2,
       mode: options?.mode ?? 'default',
-      ...this.identManager.options,
+      ...this.identGenerator.options,
     });
     this.enabled = this.options.enabled;
   }
@@ -43,7 +43,7 @@ class MinifiyCssIdentsPlugin extends Module {
       // and does not replace [local] in the ident template nor escape the resulting ident.
       const defaultLocalIdent = defaultGetLocalIdent.apply(this, args).replace(/\[local]/gi, escape(args[2]));
       const escapedLocalIdent = escapeLocalIdent(defaultLocalIdent);
-      return plugin.enabled ? plugin.identManager.generateIdent(escapedLocalIdent) : escapedLocalIdent;
+      return plugin.enabled ? plugin.identGenerator.generateIdent(escapedLocalIdent) : escapedLocalIdent;
     }
     this.getLocalIdentCache ??= getLocalIdent;
     return this.getLocalIdentCache;
@@ -82,15 +82,15 @@ class MinifiyCssIdentsPlugin extends Module {
   protected loadMap(filename: string, ignoreNoEnt?: boolean) {
     const mapBytes = readMap(filename, ignoreNoEnt);
     if (mapBytes !== null) {
-      this.identManager.loadMap(parseMap(filename, mapBytes), filename);
+      this.identGenerator.loadMap(parseMap(filename, mapBytes), filename);
     }
   }
 
   protected stringifyMap() {
-    return `${JSON.stringify(this.identManager.identMap, null, this.options.mapIndent)}\n`;
+    return `${JSON.stringify(this.identGenerator.identMap, null, this.options.mapIndent)}\n`;
   }
 
-  public static readonly alphabet = IdentManager.alphabet;
+  public static readonly alphabet = IdentGenerator.alphabet;
 
   public static readonly Error = MinifiyCssIdentsPluginError;
 
@@ -142,9 +142,9 @@ function removeMap(filename: string) {
 namespace MinifiyCssIdentsPlugin {
   export type Error = MinifiyCssIdentsPluginError;
 
-  export type Map = IdentManager.Map;
+  export type Map = IdentGenerator.Map;
 
-  export interface Options extends IdentManager.Options {
+  export interface Options extends IdentGenerator.Options {
     enabled?: boolean | null;
     filename?: string | null;
     mapIndent?: number | null;
@@ -152,7 +152,7 @@ namespace MinifiyCssIdentsPlugin {
   }
 
   export namespace Options {
-    export interface Resolved extends IdentManager.Options.Resolved {
+    export interface Resolved extends IdentGenerator.Options.Resolved {
       enabled: boolean | null;
       filename: string | null;
       mapIndent: number;
