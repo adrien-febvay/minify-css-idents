@@ -43,43 +43,29 @@ describe('Check IdentGenerator class', () => {
     );
   });
 
-  it('Idents are incremented from "a" to "z"', () => {
-    const identGenerator = new IdentGenerator();
-    for (const char of IdentGenerator.alphabet) {
-      if (isNaN(Number(char))) {
-        identGenerator.expectIdent(char);
-      }
-    }
+  it('Option startIdent works as intended', () => {
+    new IdentGenerator({ startIdent: '' }).expectIdent('a');
+    new IdentGenerator({ startIdent: 'a' }).expectIdent('a');
+    new IdentGenerator({ startIdent: 'a0' }).expectIdent('a0');
+    new IdentGenerator({ startIdent: 'ad' }).expectIdent('ae');
+    new IdentGenerator({ startIdent: 'a00' }).expectIdent('a00');
   });
 
-  it('Idents are incremented from "z" to "az"', () => {
-    const identGenerator = new IdentGenerator({ exclude: [], startIdent: 'z' });
-    for (const char of IdentGenerator.alphabet) {
+  it('Idents are incremented correctly', () => {
+    const { alphabet } = IdentGenerator;
+    const identGenerator = new IdentGenerator({ exclude: [] });
+    for (const char of alphabet.slice(10)) {
+      identGenerator.expectIdent(char);
+    }
+    for (const char of alphabet) {
       identGenerator.expectIdent(`a${char}`);
     }
-  });
-
-  it('Idents are incremented from "az" to "b0"', () => {
-    new IdentGenerator({ startIdent: 'az' }).expectIdent(`b0`);
-  });
-
-  it('Idents are incremented from "aNz" to "a(N + 1)z" or "b00"', () => {
-    const identGenerator = new IdentGenerator({ exclude: [] });
-    const { alphabet } = IdentGenerator;
-    for (const char of alphabet) {
-      if (isNaN(Number(char))) {
-        const expectedChar = alphabet[alphabet.indexOf(char) + 1];
-        const expectedIdent = expectedChar ? `a${expectedChar}0` : 'b00';
-        identGenerator.setLastIdent(`a${char}z`).expectIdent(expectedIdent);
-      }
+    identGenerator.expectIdent(`b0`);
+    for (const char of alphabet.slice(10)) {
+      const expectedChar = alphabet[alphabet.indexOf(char) + 1];
+      const expectedIdent = expectedChar ? `a${expectedChar}0` : 'b00';
+      identGenerator.setLastIdent(`a${char}z`).expectIdent(expectedIdent);
     }
-  });
-
-  it('Idents are stored into and fetched from map', () => {
-    const identGenerator = new IdentGenerator();
-    identGenerator.expectIdent('a');
-    identGenerator.expectIdent('b');
-    identGenerator.expectIdent('a');
   });
 
   it('Idents/prefixes are excluded', () => {
@@ -89,6 +75,13 @@ describe('Check IdentGenerator class', () => {
     identGenerator.setLastIdent('ac').expectIdent('ae');
     identGenerator.setLastIdent('acz').expectIdent('ae0');
     identGenerator.setLastIdent('aczz').expectIdent('ae00');
+  });
+
+  it('Idents are stored into and fetched from map', () => {
+    const identGenerator = new IdentGenerator();
+    identGenerator.expectIdent('a');
+    identGenerator.expectIdent('b');
+    identGenerator.expectIdent('a');
   });
 
   it('Ident map is loaded', () => {

@@ -1,3 +1,6 @@
+# Dev
+- First ident generated is now the actual value of the "startsWith" option
+
 # Version 0.4.0
 - Unminified idents are now made by css-loader's defaultGetLocalIdent
 - New "enabled" option to toggle the plug-in, by default true on production

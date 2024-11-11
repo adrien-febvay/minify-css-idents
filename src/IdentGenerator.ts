@@ -21,7 +21,7 @@ export class IdentGenerator {
       mapIndent: options?.mapIndent ?? 2,
       startIdent: options?.startIdent ?? null,
     });
-    this.lastIdent = options?.startIdent?.split('') ?? [];
+    this.lastIdent = prevIdent(options?.startIdent ?? '');
     IdentGenerator.implicitInstance = this;
   }
 
@@ -50,15 +50,15 @@ export class IdentGenerator {
   }
 
   public importMap(map: IdentGenerator.Map) {
-    let lastIdent = this.lastIdent.join('');
+    let maxIdent = this.lastIdent.join('');
     for (const key in map) {
       const ident = String(map[key]);
-      if (ident.length > lastIdent.length || ident > lastIdent) {
-        lastIdent = ident;
+      if (ident.length > maxIdent.length || ident > maxIdent) {
+        maxIdent = ident;
       }
       this.identMap[key] = ident;
     }
-    this.lastIdent = lastIdent.split('');
+    this.lastIdent = maxIdent.split('');
   }
 
   public loadMap(filename: string, ignoreNoEnt?: boolean) {
@@ -119,6 +119,21 @@ function parseMap(bytes: string, filename: string) {
   } else {
     return data as IdentGenerator.Map;
   }
+}
+
+function prevIdent(ident: string) {
+  const prevIdent = ident
+    .toLowerCase()
+    .replace(/^\d+|[^\da-z]+/g, '')
+    .split('');
+  let offset = prevIdent.length - 1;
+  do {
+    prevIdent[offset] = alphabet[alphabet.indexOf(prevIdent[offset] ?? '') - 1] ?? 'z';
+  } while (prevIdent[offset] === 'z' && --offset >= 0);
+  if (prevIdent[0] === '9') {
+    prevIdent.shift();
+  }
+  return prevIdent;
 }
 
 function readMap(filename: string, ignoreNoEnt?: boolean) {
