@@ -9,6 +9,7 @@ export class MinifiyCssIdentsPlugin extends OriginalMinifiyCssIdentsPlugin {
   public declare enabled: boolean;
   public declare identGenerator: IdentGenerator;
   public declare getLocalIdentCache?: OriginalMinifiyCssIdentsPlugin.GetLocalIdentFn;
+  public compiler?: ReturnType<typeof mockCompiler>;
   public webpackOptions?: Partial<WebpackOptionsNormalized>;
 
   public constructor(
@@ -19,19 +20,22 @@ export class MinifiyCssIdentsPlugin extends OriginalMinifiyCssIdentsPlugin {
     this.webpackOptions = webpackOptions;
   }
 
-  public apply(compiler?: Compiler) {
-    const resolvedCompiler = mockCompiler(this.webpackOptions, compiler);
-    super.apply(resolvedCompiler);
-    return resolvedCompiler;
+  public apply(compiler?: Compiler, loaderContext?: Partial<LoaderContext<object>>) {
+    this.compiler = mockCompiler(this.webpackOptions, loaderContext, compiler);
+    super.apply(this.compiler);
+    return this.compiler;
   }
 
   public get getLocalIdent() {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const minifiyCssIdentsPlugin = this;
     const superGetLocalIdent = super.getLocalIdent;
     function getLocalIdent(resourcePath?: string, localIdentName?: string, localName?: string): string;
     function getLocalIdent(context: LoaderContext<object>, localIdentName: string, localName: string): string;
     function getLocalIdent(arg0: string | LoaderContext<object> = '', localIdentName = '', localName = '') {
       const contextArg = typeof arg0 === 'object' ? arg0 : { resourcePath: arg0 };
-      const context = { mode: 'production', ...contextArg } as LoaderContext<object>;
+      const loaderContext = minifiyCssIdentsPlugin.compiler?.hooks.compilation.loaderContext;
+      const context = { mode: 'production', ...loaderContext, ...contextArg } as LoaderContext<object>;
       return superGetLocalIdent(context, localIdentName, localName, {});
     }
     return getLocalIdent;
@@ -48,7 +52,10 @@ export class MinifiyCssIdentsPlugin extends OriginalMinifiyCssIdentsPlugin {
       localName = '',
     ) {
       const contextArg = typeof arg0 === 'object' ? arg0 : { resourcePath: arg0 };
-      const context = { mode: 'production', ...contextArg } as LoaderContext<object>;
+      const instance = MinifiyCssIdentsPlugin.implicitInstance;
+      const compiler = instance instanceof MinifiyCssIdentsPlugin ? instance.compiler : null;
+      const loaderContext = compiler?.hooks.compilation.loaderContext;
+      const context = { mode: 'production', ...loaderContext, ...contextArg } as LoaderContext<object>;
       return superGetLocalIdent.call(this, context, localIdentName, localName, {});
     }
     return getLocalIdent;
@@ -61,42 +68,61 @@ export class MinifiyCssIdentsPlugin extends OriginalMinifiyCssIdentsPlugin {
   public static set implicitInstance(minifiyCssIdentsPlugin: OriginalMinifiyCssIdentsPlugin | undefined) {
     OriginalMinifiyCssIdentsPlugin.implicitInstance = minifiyCssIdentsPlugin;
   }
+
+  public static readonly symbol: typeof OriginalMinifiyCssIdentsPlugin.symbol = OriginalMinifiyCssIdentsPlugin.symbol;
 }
 
-function mockCompiler(webpackOptions: Partial<WebpackOptionsNormalized> = {}, compiler?: Compiler) {
+function mockCompiler(
+  webpackOptions?: Partial<WebpackOptionsNormalized>,
+  loaderContext?: Partial<LoaderContext<object>>,
+  compiler?: Compiler,
+) {
   const beforeCompile = new FakeHook();
-  const compilation = new CompilationHook();
+  const compilation = new CompilationHook({ mode: webpackOptions?.mode, ...loaderContext });
+  const getCompilationHooks = (compilationArg = compilation) => compilationArg.moreHooks;
+  const webpack = { ...compiler?.webpack, NormalModule: { getCompilationHooks } };
   const hooks = { ...compiler?.hooks, beforeCompile, compilation };
   const options = { mode: 'production', ...compiler?.options, ...webpackOptions };
-  const fakeCompiler = { context: join(sep, 'default-context'), ...compiler, hooks, options };
+  const fakeCompiler = { context: join(sep, 'default-context'), ...compiler, hooks, options, webpack };
   return fakeCompiler as Compiler & typeof fakeCompiler;
 }
 
-class FakeHook<TapType = string> extends EventEmitter {
-  public emit() {
-    return super.emit('emit');
-  }
+class FakeHook<TapType = string, Args extends unknown[] = []> {
+  public emitter = new EventEmitter();
+  public listeners: ((args: Args) => void)[] = [];
+  public triggerCount = 0;
 
   public get listener() {
-    return this.listeners('emit')[0];
+    return this.listeners[0];
   }
 
-  public listenerCount() {
-    return super.listenerCount('emit');
+  public tap(_type: TapType, callback: (...args: Args) => void) {
+    const listener = jest.fn((args: Args) => callback.call(null, ...args));
+    this.listeners.push(listener);
+    this.emitter.on('emit', listener);
   }
 
-  public tap(_type: TapType, callback: (hook: this) => void) {
-    this.on('emit', () => callback.call(null, this));
+  public trigger(...args: Args) {
+    this.triggerCount += 1;
+    return this.emitter.emit('emit', args);
   }
 }
 
-class CompilationHook extends FakeHook<string> {
+class CompilationHook extends FakeHook<string, [CompilationHook]> {
   public readonly hooks = { afterProcessAssets: new FakeHook<{ stage: number; name: string }>() };
+  public readonly moreHooks = { loader: new FakeHook<string, [OriginalMinifiyCssIdentsPlugin.LoaderContext]>() };
+  public readonly loaderContext: OriginalMinifiyCssIdentsPlugin.LoaderContext;
+
+  public constructor(loaderContext?: Partial<LoaderContext<object>>) {
+    super();
+    this.loaderContext = loaderContext as OriginalMinifiyCssIdentsPlugin.LoaderContext;
+  }
 
   public emitAsset = jest.fn();
 
-  public emit() {
-    super.emit();
-    return this.hooks.afterProcessAssets.emit();
+  public trigger() {
+    super.trigger(this);
+    this.moreHooks.loader.trigger(this.loaderContext);
+    return this.hooks.afterProcessAssets.trigger();
   }
 }

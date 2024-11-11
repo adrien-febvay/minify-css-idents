@@ -34,6 +34,13 @@ describe('Check MinifiyCssIdentsPlugin class', () => {
     expect(fn).not.toThrow();
   });
 
+  it('Instance is registered in loader context', () => {
+    const minifiyCssIdentsPlugin = new MinifiyCssIdentsPlugin();
+    const { compilation } = minifiyCssIdentsPlugin.apply().hooks;
+    compilation.trigger();
+    expect(compilation.loaderContext[MinifiyCssIdentsPlugin.symbol]).toBe(minifiyCssIdentsPlugin);
+  });
+
   it('Options are defaulted', () => {
     const minifyCssIdents = new MinifiyCssIdentsPlugin();
     expect(minifyCssIdents.options).toMatchObject({
@@ -66,19 +73,18 @@ describe('Check MinifiyCssIdentsPlugin class', () => {
     const compiler = minifyCssIdents.apply();
     minifyCssIdents.getLocalIdent('some-path', 'n/a', 'some-name');
     expect(minifyCssIdents.identGenerator.identMap).toStrictEqual({});
-    expect(compiler.hooks.beforeCompile.listenerCount()).toBe(0);
-    expect(compiler.hooks.compilation.listenerCount()).toBe(0);
-    expect(compiler.hooks.compilation.hooks.afterProcessAssets.listenerCount()).toBe(0);
+    expect(compiler.hooks.beforeCompile.listeners.length).toBe(0);
+    expect(compiler.hooks.compilation.hooks.afterProcessAssets.listeners.length).toBe(0);
   });
 
   it('Filename is resolved', () => {
     fs.readFileSync.mockImplementation(() => '{}');
     const minifyCssIdents1 = new MinifiyCssIdentsPlugin({ filename: 'some-file' });
-    minifyCssIdents1.apply().hooks.beforeCompile.emit();
+    minifyCssIdents1.apply().hooks.beforeCompile.trigger();
     expect(fs.readFileSync).toHaveBeenCalledTimes(1);
     expect(fs.readFileSync).toHaveBeenCalledWith(join(sep, 'default-context', 'some-file'), 'utf-8');
     const minifyCssIdents2 = new MinifiyCssIdentsPlugin({ filename: someFile });
-    minifyCssIdents2.apply().hooks.beforeCompile.emit();
+    minifyCssIdents2.apply().hooks.beforeCompile.trigger();
     expect(fs.readFileSync).toHaveBeenCalledTimes(2);
     expect(fs.readFileSync).toHaveBeenCalledWith(someFile, 'utf-8');
   });
@@ -94,7 +100,7 @@ describe('Check MinifiyCssIdentsPlugin class', () => {
   it('Ident map is loaded', () => {
     fs.readFileSync.mockImplementation(() => '{}');
     const minifyCssIdents = new MinifiyCssIdentsPlugin({ filename: someFile });
-    minifyCssIdents.apply().hooks.beforeCompile.emit();
+    minifyCssIdents.apply().hooks.beforeCompile.trigger();
     expect(fs.readFileSync).toHaveBeenCalledTimes(1);
     expect(fs.readFileSync).toHaveBeenCalledWith(someFile, 'utf-8');
   });
@@ -103,7 +109,7 @@ describe('Check MinifiyCssIdentsPlugin class', () => {
     const minifyCssIdents = new MinifiyCssIdentsPlugin({ filename: someFile, mapIndent: 0 });
     const { compilation } = minifyCssIdents.apply().hooks;
     compilation.emitAsset.mockImplementation();
-    compilation.emit();
+    compilation.trigger();
     expect(compilation.emitAsset).toHaveBeenCalledTimes(1);
     expect(compilation.emitAsset).toHaveBeenCalledWith(join('..', someFile), new sources.RawSource('{}\n'));
   });
@@ -111,7 +117,7 @@ describe('Check MinifiyCssIdentsPlugin class', () => {
   it('The ident map is removed', () => {
     fs.rmSync.mockImplementation();
     const minifyCssIdents = new MinifiyCssIdentsPlugin({ filename: someFile, mode: 'consume-map' });
-    minifyCssIdents.apply().hooks.compilation.emit();
+    minifyCssIdents.apply().hooks.compilation.trigger();
     expect(fs.rmSync).toHaveBeenCalledTimes(1);
     expect(fs.rmSync).toHaveBeenCalledWith(someFile);
   });
@@ -122,21 +128,32 @@ describe('Check MinifiyCssIdentsPlugin class', () => {
       throw new Error();
     });
     const minifyCssIdents = new MinifiyCssIdentsPlugin({ filename: someFile, mode: 'consume-map' });
-    minifyCssIdents.apply().hooks.compilation.emit();
+    minifyCssIdents.apply().hooks.compilation.trigger();
     expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
     expect(consoleWarnSpy).toHaveBeenCalledWith(`Failure to remove CSS identifier map file ${someFile}\n  Error`);
   });
 
-  it('Static method "getLocalIdent" gets last instance or defaults it', () => {
+  it('Static method "getLocalIdent" uses the correct instance', () => {
+    // Auto-instanciation
     MinifiyCssIdentsPlugin.implicitInstance = void 0;
     const getLocalIdent = MinifiyCssIdentsPlugin.getLocalIdent;
     expect(getLocalIdent).not.toThrow();
-    const minifiyCssIdentsPlugin = MinifiyCssIdentsPlugin.implicitInstance;
-    expect(minifiyCssIdentsPlugin).not.toBe(void 0);
+    const minifiyCssIdentsPlugin1 = MinifiyCssIdentsPlugin.implicitInstance;
+    expect(minifiyCssIdentsPlugin1).not.toBe(void 0);
+    // Use cached instance
     expect(getLocalIdent).not.toThrow();
-    expect(MinifiyCssIdentsPlugin.implicitInstance).toBe(minifiyCssIdentsPlugin);
-    expect(() => MinifiyCssIdentsPlugin.getLocalIdent()).not.toThrow();
-    expect(MinifiyCssIdentsPlugin.implicitInstance).toBe(minifiyCssIdentsPlugin);
+    expect(MinifiyCssIdentsPlugin.implicitInstance).toBe(minifiyCssIdentsPlugin1);
+    // Use implicit instance
+    expect(MinifiyCssIdentsPlugin.getLocalIdent).not.toThrow();
+    expect(MinifiyCssIdentsPlugin.implicitInstance).toBe(minifiyCssIdentsPlugin1);
+    // Use instance in loader context
+    const minifiyCssIdentsPlugin2 = new MinifiyCssIdentsPlugin();
+    const get = jest.fn();
+    Object.defineProperty(minifiyCssIdentsPlugin2, 'getLocalIdent', { get });
+    minifiyCssIdentsPlugin2.apply().hooks.compilation.trigger();
+    expect(MinifiyCssIdentsPlugin.getLocalIdent).not.toThrow();
+    expect(MinifiyCssIdentsPlugin.implicitInstance).toBe(minifiyCssIdentsPlugin1);
+    expect(get).toHaveBeenCalledTimes(1);
   });
 
   function itExpectsMode(
@@ -157,8 +174,8 @@ describe('Check MinifiyCssIdentsPlugin class', () => {
       const { beforeCompile, compilation } = minifyCssIdents.apply().hooks;
       compilation.emitAsset.mockImplementation();
       compilation.emitAsset.mockName('compilation.emitAsset');
-      beforeCompile.emit();
-      compilation.emit();
+      beforeCompile.trigger();
+      compilation.trigger();
       try {
         expect(fs.readFileSync).toHaveBeenCalledTimes(Number(expectations.includes('toLoad')));
         expect(compilation.emitAsset).toHaveBeenCalledTimes(Number(expectations.includes('toEmit')));

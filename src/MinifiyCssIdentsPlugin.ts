@@ -1,6 +1,6 @@
 import { rmSync } from 'fs';
 import { isAbsolute, join, relative } from 'path';
-import { Compilation, Compiler, LoaderContext, Module, sources } from 'webpack';
+import { Compilation, Compiler, LoaderContext as LegacyLoaderContext, Module, sources } from 'webpack';
 import { MinifiyCssIdentsError } from './MinifiyCssIdentsError';
 import { escape, escapeLocalIdent } from './utils';
 import { defaultGetLocalIdent } from 'css-loader';
@@ -44,30 +44,33 @@ class MinifiyCssIdentsPlugin extends Module {
 
   public apply(compiler: Compiler) {
     if (!this.applied) {
+      const { name } = MinifiyCssIdentsPlugin;
       const { enabled, filename, mode } = this.options;
       this.enabled = enabled ?? compiler.options.mode === 'production';
-      if (this.enabled && filename) {
-        const resolvedFilename = isAbsolute(filename) ? filename : join(compiler.context, filename);
+      const resolvedFilename = filename && (isAbsolute(filename) ? filename : join(compiler.context, filename));
+      if (this.enabled && resolvedFilename) {
         if (mode === 'default' || mode === 'load-map' || mode === 'extend-map' || mode === 'consume-map') {
-          compiler.hooks.beforeCompile.tap(MinifiyCssIdentsPlugin.name, () =>
+          compiler.hooks.beforeCompile.tap(name, () =>
             this.identGenerator.loadMap(resolvedFilename, mode === 'default'),
           );
         }
-        if (mode !== 'load-map') {
-          const { name } = MinifiyCssIdentsPlugin;
-          compiler.hooks.compilation.tap(name, (compilation) => {
-            const stage = Compilation.PROCESS_ASSETS_STAGE_OPTIMIZE;
-            compilation.hooks.afterProcessAssets.tap({ stage, name }, () => {
-              if (mode === 'consume-map') {
-                removeMap(resolvedFilename);
-              } else {
-                const relativeFilename = relative(compiler.context, resolvedFilename);
-                compilation.emitAsset(relativeFilename, new sources.RawSource(this.identGenerator.stringifyMap()));
-              }
-            });
+      }
+      compiler.hooks.compilation.tap(name, (compilation) => {
+        compiler.webpack.NormalModule.getCompilationHooks(compilation).loader.tap(name, (context) => {
+          (context as MinifiyCssIdentsPlugin.LoaderContext)[MinifiyCssIdentsPlugin.symbol] = this;
+        });
+        if (this.enabled && resolvedFilename && mode !== 'load-map') {
+          const stage = Compilation.PROCESS_ASSETS_STAGE_OPTIMIZE;
+          compilation.hooks.afterProcessAssets.tap({ stage, name }, () => {
+            if (mode === 'consume-map') {
+              removeMap(resolvedFilename);
+            } else {
+              const relativeFilename = relative(compiler.context, resolvedFilename);
+              compilation.emitAsset(relativeFilename, new sources.RawSource(this.identGenerator.stringifyMap()));
+            }
           });
         }
-      }
+      });
       this.applied = true;
     }
   }
@@ -78,12 +81,18 @@ class MinifiyCssIdentsPlugin extends Module {
 
   protected static implicitInstance?: MinifiyCssIdentsPlugin;
 
+  public static readonly symbol = Symbol(MinifiyCssIdentsPlugin.name);
+
   public static get getLocalIdent() {
+    let minifiyCssIdentsPlugin: MinifiyCssIdentsPlugin | undefined;
     function getLocalIdent(this: unknown, ...args: Parameters<MinifiyCssIdentsPlugin.GetLocalIdentFn>) {
-      MinifiyCssIdentsPlugin.implicitInstance ??= new MinifiyCssIdentsPlugin();
-      return MinifiyCssIdentsPlugin.implicitInstance.getLocalIdent.apply(this, args);
+      const [context] = args;
+      minifiyCssIdentsPlugin ??= context[MinifiyCssIdentsPlugin.symbol];
+      minifiyCssIdentsPlugin ??= MinifiyCssIdentsPlugin.implicitInstance;
+      minifiyCssIdentsPlugin ??= new MinifiyCssIdentsPlugin();
+      return minifiyCssIdentsPlugin.getLocalIdent.apply(this, args);
     }
-    return MinifiyCssIdentsPlugin.implicitInstance?.getLocalIdent ?? getLocalIdent;
+    return getLocalIdent;
   }
 }
 
@@ -101,7 +110,7 @@ namespace MinifiyCssIdentsPlugin {
 
   export type GetLocalIdentFn = (
     this: unknown,
-    context: LoaderContext<object>,
+    context: LoaderContext,
     localIdentName: string,
     localName: string,
     options: object,
@@ -119,6 +128,10 @@ namespace MinifiyCssIdentsPlugin {
     export namespace Options {
       export type Resolved = IdentGeneratorImport.Options.Resolved;
     }
+  }
+
+  export interface LoaderContext extends LegacyLoaderContext<object> {
+    [MinifiyCssIdentsPlugin.symbol]?: MinifiyCssIdentsPlugin;
   }
 
   export interface Options extends IdentGenerator.Options {
