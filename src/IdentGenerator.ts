@@ -20,6 +20,7 @@ export class IdentGenerator {
       startIdent: options?.startIdent ?? null,
     });
     this.lastIdent = options?.startIdent?.split('') ?? [];
+    IdentGenerator.implicitInstance = this;
   }
 
   public generateIdent(key: string) {
@@ -79,6 +80,13 @@ export class IdentGenerator {
   }
 
   public static readonly alphabet = alphabet;
+
+  protected static implicitInstance?: IdentGenerator;
+
+  public static generateIdent(key: string) {
+    IdentGenerator.implicitInstance ??= new IdentGenerator();
+    return IdentGenerator.implicitInstance.generateIdent(key);
+  }
 }
 
 export namespace IdentGenerator {

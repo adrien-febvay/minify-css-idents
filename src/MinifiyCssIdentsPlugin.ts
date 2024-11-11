@@ -15,7 +15,6 @@ class MinifiyCssIdentsPlugin extends Module {
 
   public constructor(options?: MinifiyCssIdentsPlugin.Options | null) {
     super('css/minify-ident');
-    MinifiyCssIdentsPlugin.implicitInstance = this;
     this.identGenerator = new IdentGenerator(options);
     this.options = Object.freeze({
       enabled: options?.enabled ?? null,
@@ -25,6 +24,7 @@ class MinifiyCssIdentsPlugin extends Module {
       ...this.identGenerator.options,
     });
     this.enabled = this.options.enabled;
+    MinifiyCssIdentsPlugin.implicitInstance = this;
   }
 
   public get getLocalIdent() {
