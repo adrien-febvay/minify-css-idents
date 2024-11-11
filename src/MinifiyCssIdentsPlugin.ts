@@ -1,10 +1,10 @@
 import { rmSync } from 'fs';
 import { isAbsolute, join, relative } from 'path';
 import { Compilation, Compiler, LoaderContext, Module, sources } from 'webpack';
-import { IdentGenerator as IdentGeneratorImport } from './IdentGenerator';
 import { MinifiyCssIdentsError } from './MinifiyCssIdentsError';
 import { escape, escapeLocalIdent } from './utils';
 import { defaultGetLocalIdent } from 'css-loader';
+import IdentGeneratorImport from './IdentGenerator';
 
 class MinifiyCssIdentsPlugin extends Module {
   public readonly options: MinifiyCssIdentsPlugin.Options.Resolved;

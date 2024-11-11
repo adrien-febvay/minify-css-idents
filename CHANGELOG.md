@@ -1,5 +1,6 @@
 # Dev
 - First ident generated is now the actual value of the "startsWith" option
+- New package entrypoint for IdentGenerator
 
 # Version 0.4.0
 - Unminified idents are now made by css-loader's defaultGetLocalIdent
