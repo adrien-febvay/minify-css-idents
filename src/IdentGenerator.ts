@@ -79,6 +79,8 @@ export class IdentGenerator {
     return -1;
   }
 
+  public static readonly Error = MinifiyCssIdentsError;
+
   public static readonly alphabet = alphabet;
 
   protected static implicitInstance?: IdentGenerator;
@@ -90,6 +92,8 @@ export class IdentGenerator {
 }
 
 export namespace IdentGenerator {
+  export type Error = MinifiyCssIdentsError;
+
   export type Map = { [Key in string]?: string };
 
   export interface Options {
