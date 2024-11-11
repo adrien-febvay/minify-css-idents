@@ -34,6 +34,13 @@ describe('Check MinifyCssIdentsPlugin class', () => {
     expect(fn).not.toThrow();
   });
 
+  it('Instance is registered in loader context', () => {
+    const minifyCssIdentsPlugin = new MinifyCssIdentsPlugin();
+    const { compilation } = minifyCssIdentsPlugin.apply().hooks;
+    compilation.trigger();
+    expect(compilation.loaderContext[MinifyCssIdentsPlugin.symbol]).toBe(minifyCssIdentsPlugin);
+  });
+
   it('Options are defaulted', () => {
     const minifyCssIdents = new MinifyCssIdentsPlugin();
     expect(minifyCssIdents.options).toMatchObject({
@@ -66,19 +73,18 @@ describe('Check MinifyCssIdentsPlugin class', () => {
     const compiler = minifyCssIdents.apply();
     minifyCssIdents.getLocalIdent('some-path', 'n/a', 'some-name');
     expect(minifyCssIdents.identGenerator.identMap).toStrictEqual({});
-    expect(compiler.hooks.beforeCompile.listenerCount()).toBe(0);
-    expect(compiler.hooks.compilation.listenerCount()).toBe(0);
-    expect(compiler.hooks.compilation.hooks.afterProcessAssets.listenerCount()).toBe(0);
+    expect(compiler.hooks.beforeCompile.listeners.length).toBe(0);
+    expect(compiler.hooks.compilation.hooks.afterProcessAssets.listeners.length).toBe(0);
   });
 
   it('Filename is resolved', () => {
     fs.readFileSync.mockImplementation(() => '{}');
     const minifyCssIdents1 = new MinifyCssIdentsPlugin({ filename: 'some-file' });
-    minifyCssIdents1.apply().hooks.beforeCompile.emit();
+    minifyCssIdents1.apply().hooks.beforeCompile.trigger();
     expect(fs.readFileSync).toHaveBeenCalledTimes(1);
     expect(fs.readFileSync).toHaveBeenCalledWith(join(sep, 'default-context', 'some-file'), 'utf-8');
     const minifyCssIdents2 = new MinifyCssIdentsPlugin({ filename: someFile });
-    minifyCssIdents2.apply().hooks.beforeCompile.emit();
+    minifyCssIdents2.apply().hooks.beforeCompile.trigger();
     expect(fs.readFileSync).toHaveBeenCalledTimes(2);
     expect(fs.readFileSync).toHaveBeenCalledWith(someFile, 'utf-8');
   });
@@ -94,7 +100,7 @@ describe('Check MinifyCssIdentsPlugin class', () => {
   it('Ident map is loaded', () => {
     fs.readFileSync.mockImplementation(() => '{}');
     const minifyCssIdents = new MinifyCssIdentsPlugin({ filename: someFile });
-    minifyCssIdents.apply().hooks.beforeCompile.emit();
+    minifyCssIdents.apply().hooks.beforeCompile.trigger();
     expect(fs.readFileSync).toHaveBeenCalledTimes(1);
     expect(fs.readFileSync).toHaveBeenCalledWith(someFile, 'utf-8');
   });
@@ -103,7 +109,7 @@ describe('Check MinifyCssIdentsPlugin class', () => {
     const minifyCssIdents = new MinifyCssIdentsPlugin({ filename: someFile, mapIndent: 0 });
     const { compilation } = minifyCssIdents.apply().hooks;
     compilation.emitAsset.mockImplementation();
-    compilation.emit();
+    compilation.trigger();
     expect(compilation.emitAsset).toHaveBeenCalledTimes(1);
     expect(compilation.emitAsset).toHaveBeenCalledWith(join('..', someFile), new sources.RawSource('{}\n'));
   });
@@ -111,7 +117,7 @@ describe('Check MinifyCssIdentsPlugin class', () => {
   it('The ident map is removed', () => {
     fs.rmSync.mockImplementation();
     const minifyCssIdents = new MinifyCssIdentsPlugin({ filename: someFile, mode: 'consume-map' });
-    minifyCssIdents.apply().hooks.compilation.emit();
+    minifyCssIdents.apply().hooks.compilation.trigger();
     expect(fs.rmSync).toHaveBeenCalledTimes(1);
     expect(fs.rmSync).toHaveBeenCalledWith(someFile);
   });
@@ -122,21 +128,38 @@ describe('Check MinifyCssIdentsPlugin class', () => {
       throw new Error();
     });
     const minifyCssIdents = new MinifyCssIdentsPlugin({ filename: someFile, mode: 'consume-map' });
-    minifyCssIdents.apply().hooks.compilation.emit();
+    minifyCssIdents.apply().hooks.compilation.trigger();
     expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
     expect(consoleWarnSpy).toHaveBeenCalledWith(`Failure to remove CSS identifier map file ${someFile}\n  Error`);
   });
 
-  it('Static method "getLocalIdent" gets last instance or defaults it', () => {
+  it('Static method "getLocalIdent" uses the correct instance', () => {
+    // Auto-instanciation
     MinifyCssIdentsPlugin.implicitInstance = void 0;
     const getLocalIdent = MinifyCssIdentsPlugin.getLocalIdent;
     expect(getLocalIdent).not.toThrow();
-    const minifyCssIdentsPlugin = MinifyCssIdentsPlugin.implicitInstance;
-    expect(minifyCssIdentsPlugin).not.toBe(void 0);
+    const minifyCssIdentsPlugin1 = MinifyCssIdentsPlugin.implicitInstance;
+    expect(minifyCssIdentsPlugin1).not.toBe(void 0);
+
+    // Use cached instance
     expect(getLocalIdent).not.toThrow();
-    expect(MinifyCssIdentsPlugin.implicitInstance).toBe(minifyCssIdentsPlugin);
-    expect(() => MinifyCssIdentsPlugin.getLocalIdent()).not.toThrow();
-    expect(MinifyCssIdentsPlugin.implicitInstance).toBe(minifyCssIdentsPlugin);
+    expect(MinifyCssIdentsPlugin.implicitInstance).toBe(minifyCssIdentsPlugin1);
+
+    // Use implicit instance
+    expect(MinifyCssIdentsPlugin.getLocalIdent).not.toThrow();
+    expect(MinifyCssIdentsPlugin.implicitInstance).toBe(minifyCssIdentsPlugin1);
+
+    // Use instance in loader context
+    // We want to make sure getLocalIdent is called on the right instance, without the help of implicitInstance
+    const minifyCssIdentsPlugin2 = new MinifyCssIdentsPlugin();
+    MinifyCssIdentsPlugin.implicitInstance = void 0;
+    const { compilation } = minifyCssIdentsPlugin2.apply().hooks;
+    compilation.trigger();
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    const get = jest.fn(Object.getOwnPropertyDescriptor(MinifyCssIdentsPlugin.prototype, 'getLocalIdent')?.get);
+    Object.defineProperty(minifyCssIdentsPlugin2, 'getLocalIdent', { get });
+    expect(() => MinifyCssIdentsPlugin.getLocalIdent(compilation.loaderContext)).not.toThrow();
+    expect(get).toHaveBeenCalledTimes(1);
   });
 
   function itExpectsMode(
@@ -157,8 +180,8 @@ describe('Check MinifyCssIdentsPlugin class', () => {
       const { beforeCompile, compilation } = minifyCssIdents.apply().hooks;
       compilation.emitAsset.mockImplementation();
       compilation.emitAsset.mockName('compilation.emitAsset');
-      beforeCompile.emit();
-      compilation.emit();
+      beforeCompile.trigger();
+      compilation.trigger();
       try {
         expect(fs.readFileSync).toHaveBeenCalledTimes(Number(expectations.includes('toLoad')));
         expect(compilation.emitAsset).toHaveBeenCalledTimes(Number(expectations.includes('toEmit')));
