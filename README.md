@@ -166,9 +166,9 @@ The creation, update or deletion of the map will occur when Webpack is done emit
 
 Default value: `null`
 
-Identifier to start the generation with. In example, if you set it to `"z"`, the first generated identifier will be `"a0"` (unless it is excluded in the options).
+Identifier to start the generation with.
 
-Future versions should actually return the identifier you specified as the first generated one instead of incrementing it right away.
+Note: Will be skipped if excluded in the options.
 
 ### How the package works
 
