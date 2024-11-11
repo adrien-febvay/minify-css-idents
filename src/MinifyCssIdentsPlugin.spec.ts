@@ -126,4 +126,43 @@ describe('Check MinifyCssIdentsPlugin class', () => {
     expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
     expect(consoleWarnSpy).toHaveBeenCalledWith(`Failure to remove CSS identifier map file ${someFile}\n  Error`);
   });
+
+  function itExpectsMode(
+    mode: MinifiyCssIdentsPlugin['options']['mode'],
+    ...expectations: ('toIgnoreENoEnt' | 'toLoad' | 'toEmit' | 'toRemove')[]
+  ) {
+    it(`Mode "${mode}" works as intended`, () => {
+      fs.readFileSync.mockImplementation(() => {
+        if (expectations.includes('toIgnoreENoEnt')) {
+          throw Object.assign(new Error(), { code: 'ENOENT' });
+        }
+        return '{}';
+      });
+      fs.readFileSync.mockName('fs.readFileSync');
+      fs.rmSync.mockImplementation();
+      fs.readFileSync.mockName('fs.rmSync');
+      const minifyCssIdents = new MinifiyCssIdentsPlugin({ mode, filename: someFile });
+      const { beforeCompile, compilation } = minifyCssIdents.apply().hooks;
+      compilation.emitAsset.mockImplementation();
+      compilation.emitAsset.mockName('compilation.emitAsset');
+      beforeCompile.emit();
+      compilation.emit();
+      try {
+        expect(fs.readFileSync).toHaveBeenCalledTimes(Number(expectations.includes('toLoad')));
+        expect(compilation.emitAsset).toHaveBeenCalledTimes(Number(expectations.includes('toEmit')));
+        expect(fs.rmSync).toHaveBeenCalledTimes(Number(expectations.includes('toRemove')));
+      } catch (error) {
+        if (error instanceof Error) {
+          Error.captureStackTrace(error, itExpectsMode);
+        }
+        throw error;
+      }
+    });
+  }
+
+  itExpectsMode('default', 'toIgnoreENoEnt', 'toLoad', 'toEmit');
+  itExpectsMode('load-map', 'toLoad');
+  itExpectsMode('extend-map', 'toLoad', 'toEmit');
+  itExpectsMode('consume-map', 'toLoad', 'toRemove');
+  itExpectsMode('create-map', 'toEmit');
 });
