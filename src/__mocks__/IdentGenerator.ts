@@ -1,5 +1,5 @@
 // Meant to be imported, not called with jest.mock().
-import { IdentGenerator as OriginalIdentGenerator } from '../IdentGenerator';
+import OriginalIdentGenerator from '../IdentGenerator';
 
 export class IdentGenerator extends OriginalIdentGenerator {
   public expectIdent(ident: string, key = `test-${ident}`) {

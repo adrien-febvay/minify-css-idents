@@ -1,9 +1,9 @@
 // Meant to be imported, not called with jest.mock().
+import type IdentGenerator from '../IdentGenerator';
 import { Compiler, LoaderContext, WebpackOptionsNormalized } from 'webpack';
 import EventEmitter from 'events';
 import { join, sep } from 'path';
 import OriginalMinifyCssIdentsPlugin from '../MinifyCssIdentsPlugin';
-import { IdentGenerator } from '../IdentGenerator';
 
 export class MinifyCssIdentsPlugin extends OriginalMinifyCssIdentsPlugin {
   public declare enabled: boolean;

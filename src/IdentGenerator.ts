@@ -4,7 +4,7 @@ import { isDictLike, isError, type } from './utils';
 
 const alphabet = '0123456789abcdefghijklmnopqrstuvwxyz';
 
-export class IdentGenerator {
+class IdentGenerator {
   public readonly options: IdentGenerator.Options.Resolved;
   public lastIdent: string[];
   public identMap: IdentGenerator.Map = {};
@@ -148,7 +148,7 @@ function readMap(filename: string, ignoreNoEnt?: boolean) {
   }
 }
 
-export namespace IdentGenerator {
+namespace IdentGenerator {
   export type Error = MinifyCssIdentsError;
 
   export type Map = { [Key in string]?: string };
@@ -168,3 +168,5 @@ export namespace IdentGenerator {
     }
   }
 }
+
+export = IdentGenerator;

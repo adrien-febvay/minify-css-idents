@@ -34,7 +34,10 @@
   "files": [
     "dist/*"
   ],
-  "main": "dist/MinifyCssIdentsPlugin.js",
+  "exports": {
+    ".": "./dist/MinifyCssIdentsPlugin.js",
+    "./IdentGenerator": "./dist/IdentGenerator.js"
+  },
   "devDependencies": {
     "@babel/core": "^7.25.8",
     "@babel/preset-env": "^7.25.8",
