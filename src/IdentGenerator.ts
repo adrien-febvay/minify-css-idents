@@ -1,4 +1,4 @@
-import { MinifyCssIdentsPluginError } from './Error';
+import { MinifyCssIdentsError } from './MinifyCssIdentsError';
 import { isDictLike, type } from './utils';
 
 const alphabet = '0123456789abcdefghijklmnopqrstuvwxyz';
@@ -11,7 +11,7 @@ export class IdentGenerator {
   public constructor(options?: IdentGenerator.Options | null) {
     if (options?.exclude?.filter((ident) => /^\*|\*./.test(ident)).length) {
       const details = 'The * wildchar can only be used at the end of an identifier';
-      throw new MinifyCssIdentsPluginError('Invalid "exclude" option', details);
+      throw new MinifyCssIdentsError('Invalid "exclude" option', details);
     }
     const excludePrefix = options?.exclude?.filter((ident) => /\*$/.test(ident));
     this.options = Object.freeze({
@@ -60,13 +60,13 @@ export class IdentGenerator {
         }
       }
       if (invalidIdents) {
-        throw new MinifyCssIdentsPluginError(`Invalid CSS identifier(s) in ${filename}${invalidIdents}`);
+        throw new MinifyCssIdentsError(`Invalid CSS identifier(s) in ${filename}${invalidIdents}`);
       }
       this.lastIdent = lastIdent.split('');
       this.identMap = data as IdentGenerator.Map;
     } else {
       const details = `Expected string dictionary, got ${type(data)}`;
-      throw new MinifyCssIdentsPluginError(`Invalid CSS identifier map in ${filename}`, details);
+      throw new MinifyCssIdentsError(`Invalid CSS identifier map in ${filename}`, details);
     }
   }
 

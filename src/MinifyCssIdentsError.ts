@@ -1,6 +1,6 @@
-export class MinifyCssIdentsPluginError extends Error {
+export class MinifyCssIdentsError extends Error {
   public constructor(message: string, cause?: unknown, capture?: (...args: any[]) => void) {
-    super(MinifyCssIdentsPluginError.message(message, cause));
+    super(MinifyCssIdentsError.message(message, cause));
     if (capture) {
       Error.captureStackTrace(this, capture);
     }

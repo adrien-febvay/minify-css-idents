@@ -2,7 +2,7 @@ import { readFileSync, rmSync } from 'fs';
 import { isAbsolute, join, relative } from 'path';
 import { Compilation, Compiler, LoaderContext, Module, sources } from 'webpack';
 import { IdentGenerator } from './IdentGenerator';
-import { MinifyCssIdentsPluginError } from './Error';
+import { MinifyCssIdentsError } from './MinifyCssIdentsError';
 import { escape, escapeLocalIdent, isError } from './utils';
 import { defaultGetLocalIdent } from 'css-loader';
 
@@ -92,7 +92,7 @@ class MinifyCssIdentsPlugin extends Module {
 
   public static readonly alphabet = IdentGenerator.alphabet;
 
-  public static readonly Error = MinifyCssIdentsPluginError;
+  public static readonly Error = MinifyCssIdentsError;
 
   public static getLocalIdent(
     this: unknown,
@@ -114,7 +114,7 @@ function parseMap(filename: string, bytes: string) {
   try {
     return JSON.parse(bytes);
   } catch (cause) {
-    throw new MinifyCssIdentsPluginError(`Failure to parse ${filename}`, cause, parseMap);
+    throw new MinifyCssIdentsError(`Failure to parse ${filename}`, cause, parseMap);
   }
 }
 
@@ -125,7 +125,7 @@ function readMap(filename: string, ignoreNoEnt?: boolean) {
     if (ignoreNoEnt && isError(cause) && cause.code === 'ENOENT') {
       return null;
     } else {
-      throw new MinifyCssIdentsPluginError(`Failure to read ${filename}`, cause, parseMap);
+      throw new MinifyCssIdentsError(`Failure to read ${filename}`, cause, parseMap);
     }
   }
 }
@@ -135,12 +135,12 @@ function removeMap(filename: string) {
     rmSync(filename);
   } catch (cause) {
     // eslint-disable-next-line no-console
-    console.warn(MinifyCssIdentsPluginError.message(`Failure to remove CSS identifier map file ${filename}`, cause));
+    console.warn(MinifyCssIdentsError.message(`Failure to remove CSS identifier map file ${filename}`, cause));
   }
 }
 
 namespace MinifyCssIdentsPlugin {
-  export type Error = MinifyCssIdentsPluginError;
+  export type Error = MinifyCssIdentsError;
 
   export type Map = IdentGenerator.Map;
 
