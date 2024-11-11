@@ -1,21 +1,21 @@
 import { readFileSync, rmSync } from 'fs';
 import { isAbsolute, join, relative } from 'path';
 import { Compilation, Compiler, LoaderContext, Module, sources } from 'webpack';
-import { IdentGenerator } from './IdentGenerator';
+import { IdentGenerator as IdentGeneratorImport } from './IdentGenerator';
 import { MinifyCssIdentsError } from './MinifyCssIdentsError';
 import { escape, escapeLocalIdent, isError } from './utils';
 import { defaultGetLocalIdent } from 'css-loader';
 
 class MinifyCssIdentsPlugin extends Module {
   public readonly options: MinifyCssIdentsPlugin.Options.Resolved;
-  protected readonly identGenerator: IdentGenerator;
+  protected readonly identGenerator: IdentGeneratorImport;
   protected applied = false;
   protected enabled: boolean | null;
   protected getLocalIdentCache?: (typeof MinifyCssIdentsPlugin)['getLocalIdent'];
 
   public constructor(options?: MinifyCssIdentsPlugin.Options | null) {
     super('css/minify-ident');
-    this.identGenerator = new IdentGenerator(options);
+    this.identGenerator = new IdentGeneratorImport(options);
     this.options = Object.freeze({
       enabled: options?.enabled ?? null,
       filename: options?.filename ?? null,
@@ -90,9 +90,11 @@ class MinifyCssIdentsPlugin extends Module {
     return `${JSON.stringify(this.identGenerator.identMap, null, this.options.mapIndent)}\n`;
   }
 
-  public static readonly alphabet = IdentGenerator.alphabet;
-
   public static readonly Error = MinifyCssIdentsError;
+
+  public static readonly IdentGenerator = IdentGeneratorImport;
+
+  protected static implicitInstance?: MinifyCssIdentsPlugin;
 
   public static getLocalIdent(
     this: unknown,
@@ -106,8 +108,6 @@ class MinifyCssIdentsPlugin extends Module {
     MinifyCssIdentsPlugin.implicitInstance ??= new MinifyCssIdentsPlugin();
     return MinifyCssIdentsPlugin.implicitInstance.getLocalIdent.apply(this, args);
   }
-
-  protected static implicitInstance?: MinifyCssIdentsPlugin;
 }
 
 function parseMap(filename: string, bytes: string) {
@@ -142,7 +142,19 @@ function removeMap(filename: string) {
 namespace MinifyCssIdentsPlugin {
   export type Error = MinifyCssIdentsError;
 
-  export type Map = IdentGenerator.Map;
+  export type IdentGenerator = IdentGeneratorImport;
+
+  export namespace IdentGenerator {
+    export type Error = IdentGeneratorImport.Error;
+
+    export type Map = IdentGeneratorImport.Map;
+
+    export type Options = IdentGeneratorImport.Options;
+
+    export namespace Options {
+      export type Resolved = IdentGeneratorImport.Options.Resolved;
+    }
+  }
 
   export interface Options extends IdentGenerator.Options {
     enabled?: boolean | null;

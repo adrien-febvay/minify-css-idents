@@ -79,7 +79,7 @@ export class IdentGenerator {
     return -1;
   }
 
-  public static readonly Error = MinifiyCssIdentsError;
+  public static readonly Error = MinifyCssIdentsError;
 
   public static readonly alphabet = alphabet;
 
@@ -92,7 +92,7 @@ export class IdentGenerator {
 }
 
 export namespace IdentGenerator {
-  export type Error = MinifiyCssIdentsError;
+  export type Error = MinifyCssIdentsError;
 
   export type Map = { [Key in string]?: string };
 
