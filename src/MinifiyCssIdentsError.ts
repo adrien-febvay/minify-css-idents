@@ -1,6 +1,6 @@
-export class MinifiyCssIdentsPluginError extends Error {
+export class MinifiyCssIdentsError extends Error {
   public constructor(message: string, cause?: unknown, capture?: (...args: any[]) => void) {
-    super(MinifiyCssIdentsPluginError.message(message, cause));
+    super(MinifiyCssIdentsError.message(message, cause));
     if (capture) {
       Error.captureStackTrace(this, capture);
     }

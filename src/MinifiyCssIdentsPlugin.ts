@@ -2,7 +2,7 @@ import { readFileSync, rmSync } from 'fs';
 import { isAbsolute, join, relative } from 'path';
 import { Compilation, Compiler, LoaderContext, Module, sources } from 'webpack';
 import { IdentGenerator } from './IdentGenerator';
-import { MinifiyCssIdentsPluginError } from './Error';
+import { MinifiyCssIdentsError } from './MinifiyCssIdentsError';
 import { escape, escapeLocalIdent, isError } from './utils';
 import { defaultGetLocalIdent } from 'css-loader';
 
@@ -92,7 +92,7 @@ class MinifiyCssIdentsPlugin extends Module {
 
   public static readonly alphabet = IdentGenerator.alphabet;
 
-  public static readonly Error = MinifiyCssIdentsPluginError;
+  public static readonly Error = MinifiyCssIdentsError;
 
   public static getLocalIdent(
     this: unknown,
@@ -114,7 +114,7 @@ function parseMap(filename: string, bytes: string) {
   try {
     return JSON.parse(bytes);
   } catch (cause) {
-    throw new MinifiyCssIdentsPluginError(`Failure to parse ${filename}`, cause, parseMap);
+    throw new MinifiyCssIdentsError(`Failure to parse ${filename}`, cause, parseMap);
   }
 }
 
@@ -125,7 +125,7 @@ function readMap(filename: string, ignoreNoEnt?: boolean) {
     if (ignoreNoEnt && isError(cause) && cause.code === 'ENOENT') {
       return null;
     } else {
-      throw new MinifiyCssIdentsPluginError(`Failure to read ${filename}`, cause, parseMap);
+      throw new MinifiyCssIdentsError(`Failure to read ${filename}`, cause, parseMap);
     }
   }
 }
@@ -135,12 +135,12 @@ function removeMap(filename: string) {
     rmSync(filename);
   } catch (cause) {
     // eslint-disable-next-line no-console
-    console.warn(MinifiyCssIdentsPluginError.message(`Failure to remove CSS identifier map file ${filename}`, cause));
+    console.warn(MinifiyCssIdentsError.message(`Failure to remove CSS identifier map file ${filename}`, cause));
   }
 }
 
 namespace MinifiyCssIdentsPlugin {
-  export type Error = MinifiyCssIdentsPluginError;
+  export type Error = MinifiyCssIdentsError;
 
   export type Map = IdentGenerator.Map;
 
