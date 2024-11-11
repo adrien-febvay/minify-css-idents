@@ -61,11 +61,12 @@ export function isError(value: unknown): value is Error & { code: unknown } {
   return value instanceof Error;
 }
 
-export function type(value: unknown, limit?: number) {
-  if (typeof value === 'string') {
-    const str = JSON.stringify(value);
-    return limit != null && str.length > limit ? `string(${value.length})` : str;
+export function type(value: unknown) {
+  if (value == null) {
+    return String(value);
   } else {
-    return value === null ? 'null' : value instanceof Array ? 'array' : typeof value;
+    const type = value instanceof Array ? 'array' : typeof value;
+    const article = /[aeiou]/.test(type.slice(0, 1)) ? 'an' : 'a';
+    return `${article} ${type}`;
   }
 }

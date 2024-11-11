@@ -1,5 +1,6 @@
+import { readFileSync } from 'fs';
 import { MinifiyCssIdentsError } from './MinifiyCssIdentsError';
-import { isDictLike, type } from './utils';
+import { isDictLike, isError, type } from './utils';
 
 const alphabet = '0123456789abcdefghijklmnopqrstuvwxyz';
 
@@ -17,6 +18,7 @@ export class IdentGenerator {
     this.options = Object.freeze({
       exclude: options?.exclude?.filter((ident) => !/\*/.test(ident)) ?? ['app', 'root'],
       excludePrefix: excludePrefix?.map((ident) => ident.slice(0, -1)) ?? ['ad'],
+      mapIndent: options?.mapIndent ?? 2,
       startIdent: options?.startIdent ?? null,
     });
     this.lastIdent = options?.startIdent?.split('') ?? [];
@@ -47,26 +49,22 @@ export class IdentGenerator {
     return ident;
   }
 
-  public loadMap(data: unknown, filename: string) {
-    if (isDictLike(data)) {
-      let lastIdent: string = '';
-      let invalidIdents = '';
-      for (const [key, ident] of Object.entries(data)) {
-        if (typeof ident !== 'string' || !/^[a-z][^_\W]*$/i.test(ident)) {
-          const strKey = `\n  ${/[^$\w]/.test(key) ? JSON.stringify(key) : key}: `;
-          invalidIdents += `${strKey}${type(ident, 80 - strKey.length)}`;
-        } else if (ident.length > lastIdent.length || ident > lastIdent) {
-          lastIdent = ident;
-        }
+  public importMap(map: IdentGenerator.Map) {
+    let lastIdent = this.lastIdent.join('');
+    for (const key in map) {
+      const ident = String(map[key]);
+      if (ident.length > lastIdent.length || ident > lastIdent) {
+        lastIdent = ident;
       }
-      if (invalidIdents) {
-        throw new MinifiyCssIdentsError(`Invalid CSS identifier(s) in ${filename}${invalidIdents}`);
-      }
-      this.lastIdent = lastIdent.split('');
-      this.identMap = data as IdentGenerator.Map;
-    } else {
-      const details = `Expected string dictionary, got ${type(data)}`;
-      throw new MinifiyCssIdentsError(`Invalid CSS identifier map in ${filename}`, details);
+      this.identMap[key] = ident;
+    }
+    this.lastIdent = lastIdent.split('');
+  }
+
+  public loadMap(filename: string, ignoreNoEnt?: boolean) {
+    const mapBytes = readMap(filename, ignoreNoEnt);
+    if (mapBytes !== null) {
+      this.importMap(parseMap(mapBytes, filename));
     }
   }
 
@@ -77,6 +75,10 @@ export class IdentGenerator {
       }
     }
     return -1;
+  }
+
+  public stringifyMap(indent = this.options.mapIndent) {
+    return `${JSON.stringify(this.identMap, null, indent)}\n`;
   }
 
   public static readonly Error = MinifiyCssIdentsError;
@@ -91,6 +93,46 @@ export class IdentGenerator {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/unbound-method
+const loadMap = IdentGenerator.prototype.loadMap;
+
+function parseMap(bytes: string, filename: string) {
+  let data: unknown;
+  try {
+    data = JSON.parse(bytes);
+  } catch (cause) {
+    throw new MinifiyCssIdentsError(`Failure to parse ${filename}`, cause, loadMap);
+  }
+  const causes: string[] = [];
+  if (!isDictLike(data)) {
+    causes.push(`Expected string dictionary, got ${type(data)}`);
+  } else {
+    for (const key in data) {
+      if (typeof data[key] !== 'string') {
+        causes[0] ??= `Expected string dictionary, but:`;
+        causes.push(`  - Item ${JSON.stringify(key)} is ${type(data[key])}`);
+      }
+    }
+  }
+  if (causes.length) {
+    throw new MinifiyCssIdentsError(`Invalid CSS identifier map in ${filename}`, causes.join('\n'), loadMap);
+  } else {
+    return data as IdentGenerator.Map;
+  }
+}
+
+function readMap(filename: string, ignoreNoEnt?: boolean) {
+  try {
+    return readFileSync(filename, 'utf-8');
+  } catch (cause) {
+    if (ignoreNoEnt && isError(cause) && cause.code === 'ENOENT') {
+      return null;
+    } else {
+      throw new MinifiyCssIdentsError(`Failure to read ${filename}`, cause, loadMap);
+    }
+  }
+}
+
 export namespace IdentGenerator {
   export type Error = MinifiyCssIdentsError;
 
@@ -98,6 +140,7 @@ export namespace IdentGenerator {
 
   export interface Options {
     readonly exclude?: readonly string[] | null;
+    readonly mapIndent?: number | null;
     readonly startIdent?: string | null;
   }
 
@@ -105,6 +148,7 @@ export namespace IdentGenerator {
     export interface Resolved {
       readonly exclude: readonly string[];
       readonly excludePrefix: readonly string[];
+      readonly mapIndent: number;
       readonly startIdent: string | null;
     }
   }

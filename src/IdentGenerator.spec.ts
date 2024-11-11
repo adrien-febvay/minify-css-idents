@@ -1,35 +1,29 @@
-import { IdentGenerator as OriginalIdentGenerator } from './IdentGenerator';
+import originalFs from 'fs';
+import { IdentGenerator } from './__mocks__/IdentGenerator';
 
-class IdentGenerator extends OriginalIdentGenerator {
-  public expectIdent(ident: string, key = `test-${ident}`) {
-    try {
-      expect(this.generateIdent(key)).toBe(ident);
-    } catch (error) {
-      if (error instanceof Error) {
-        // eslint-disable-next-line @typescript-eslint/unbound-method
-        Error.captureStackTrace(error, IdentGenerator.prototype.expectIdent);
-      }
-      throw error;
-    }
-  }
-
-  public setLastIdent(lastIndent: string): this {
-    this.lastIdent = lastIndent.split('');
-    return this;
-  }
-}
+jest.mock('fs');
+const fs = jest.requireMock<{ [Key in keyof typeof originalFs]: jest.Mock }>('fs');
 
 const someOptions = {
   exclude: ['some-ident', 'some-ident-prefix-*'],
+  mapIndent: 4,
   startIdent: 'some-ident',
 } as const;
 
 describe('Check IdentGenerator class', () => {
+  it('Instance is registered and defaulted', () => {
+    const fn = () => IdentGenerator.generateIdent('some-ident');
+    expect(fn).not.toThrow();
+    expect(IdentGenerator.implicitInstance).not.toBe(void 0);
+    expect(fn).not.toThrow();
+  });
+
   it('Options are defaulted', () => {
     const identGenerator = new IdentGenerator();
-    expect(identGenerator.options).toMatchObject({
+    expect(identGenerator.options).toStrictEqual({
       exclude: ['app', 'root'],
       excludePrefix: ['ad'],
+      mapIndent: 2,
       startIdent: null,
     });
   });
@@ -99,24 +93,61 @@ describe('Check IdentGenerator class', () => {
 
   it('Ident map is loaded', () => {
     const identMap = { someIdent: 'a', otherIdent: 'bb', lastIdent: 'cc', postIdent: 'aa' };
+    fs.readFileSync.mockImplementation(() => JSON.stringify(identMap));
     const identGenerator = new IdentGenerator();
-    identGenerator.loadMap(identMap, 'some-file');
+    identGenerator.loadMap('some-file');
     expect(identGenerator.identMap).toStrictEqual(identMap);
     expect(identGenerator.lastIdent).toStrictEqual(['c', 'c']);
   });
 
-  it('An invalid ident map is rejected', () => {
+  it('A non-existing ident map is ignored', () => {
+    fs.readFileSync.mockImplementation(() => {
+      throw Object.assign(new Error(), { code: 'ENOENT' });
+    });
     const identGenerator = new IdentGenerator();
-    const loadMap = () => identGenerator.loadMap(null, 'some-file');
+    expect(() => identGenerator.loadMap('some-file', true)).not.toThrow();
+  });
+
+  it('A non-readable ident map is rejected', () => {
+    fs.readFileSync.mockImplementation(() => {
+      throw Object.assign(new Error(), { code: 'ENOENT' });
+    });
+    const identGenerator = new IdentGenerator();
+    expect(() => identGenerator.loadMap('some-file')).toThrow(`Failure to read some-file\n  Error`);
+  });
+
+  it('A non-parsable ident map is rejected', () => {
+    fs.readFileSync.mockImplementation(() => 'non-json');
+    const identGenerator = new IdentGenerator();
+    expect(() => identGenerator.loadMap('some-file')).toThrow(/^Failure to parse some-file\n {2}SyntaxError: /);
+  });
+
+  it('An invalid ident map is rejected', () => {
+    fs.readFileSync.mockImplementation(() => 'null');
+    const identGenerator = new IdentGenerator();
+    const loadMap = () => identGenerator.loadMap('some-file');
     expect(loadMap).toThrow('Invalid CSS identifier map in some-file\n  Expected string dictionary, got null');
   });
 
-  it('A map with invalid idents is rejected', () => {
-    const longString = '................................................................................';
-    const someMap = { 'a': null, 'b': [], 'c': 0, 'd': '0', 'e!': longString };
+  it('An ident map with invalid items is rejected', () => {
+    const identMap = { a: [], b: 0, c: {} };
+    fs.readFileSync.mockImplementation(() => JSON.stringify(identMap));
     const identGenerator = new IdentGenerator();
-    const loadMap = () => identGenerator.loadMap(someMap, 'some-file');
-    const details = '\n  a: null\n  b: array\n  c: number\n  d: "0"\n  "e!": string(80)';
-    expect(loadMap).toThrow(`Invalid CSS identifier(s) in some-file${details}`);
+    const loadMap = () => identGenerator.loadMap('some-file');
+    const cause = `
+      Expected string dictionary, but:
+        - Item "a" is an array
+        - Item "b" is a number
+        - Item "c" is an object`;
+    expect(loadMap).toThrow(`Invalid CSS identifier map in some-file${cause.replace(/\n {4}/g, '\n')}`);
+  });
+
+  it('The ident map is stringified', () => {
+    const identGenerator = new IdentGenerator();
+    identGenerator.generateIdent('alpha');
+    expect(identGenerator.stringifyMap()).toBe('{\n  "alpha": "a"\n}\n');
+    identGenerator.generateIdent('beta');
+    identGenerator.generateIdent('alpha');
+    expect(identGenerator.stringifyMap(0)).toBe('{"alpha":"a","beta":"b"}\n');
   });
 });
