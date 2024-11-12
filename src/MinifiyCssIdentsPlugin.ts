@@ -11,7 +11,7 @@ class MinifiyCssIdentsPlugin extends Module {
   protected readonly identGenerator: IdentGeneratorImport;
   protected applied = false;
   protected enabled: boolean | null;
-  protected getLocalIdentCache?: (typeof MinifiyCssIdentsPlugin)['getLocalIdent'];
+  protected getLocalIdentCache?: MinifiyCssIdentsPlugin.GetLocalIdentFn;
 
   public constructor(options?: MinifiyCssIdentsPlugin.Options | null) {
     super('css/minify-ident');
@@ -29,22 +29,16 @@ class MinifiyCssIdentsPlugin extends Module {
   public get getLocalIdent() {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const plugin = this;
-    function getLocalIdent(
-      this: unknown,
-      context: LoaderContext<object>,
-      localIdentName: string,
-      localName: string,
-      options: object,
-    ): string;
-    function getLocalIdent(this: unknown, ...args: Parameters<typeof defaultGetLocalIdent>) {
-      plugin.enabled ??= args[0].mode === 'production';
+    this.getLocalIdentCache ??= function getLocalIdent(...args) {
+      const [context, , localName] = args;
+      plugin.enabled ??= context.mode === 'production';
+      const defaultLocalIdent = defaultGetLocalIdent.apply(this, args);
       // For some reason, defaultGetLocalIdent does not get all the job done
       // and does not replace [local] in the ident template nor escape the resulting ident.
-      const defaultLocalIdent = defaultGetLocalIdent.apply(this, args).replace(/\[local]/gi, escape(args[2]));
-      const escapedLocalIdent = escapeLocalIdent(defaultLocalIdent);
+      const resolvedLocalIdent = defaultLocalIdent.replace(/\[local]/gi, escape(localName));
+      const escapedLocalIdent = escapeLocalIdent(resolvedLocalIdent);
       return plugin.enabled ? plugin.identGenerator.generateIdent(escapedLocalIdent) : escapedLocalIdent;
-    }
-    this.getLocalIdentCache ??= getLocalIdent;
+    };
     return this.getLocalIdentCache;
   }
 
@@ -84,17 +78,12 @@ class MinifiyCssIdentsPlugin extends Module {
 
   protected static implicitInstance?: MinifiyCssIdentsPlugin;
 
-  public static getLocalIdent(
-    this: unknown,
-    context: LoaderContext<object>,
-    localIdentName: string,
-    localName: string,
-    options: object,
-  ): string;
-
-  public static getLocalIdent(this: unknown, ...args: Parameters<typeof defaultGetLocalIdent>) {
-    MinifiyCssIdentsPlugin.implicitInstance ??= new MinifiyCssIdentsPlugin();
-    return MinifiyCssIdentsPlugin.implicitInstance.getLocalIdent.apply(this, args);
+  public static get getLocalIdent() {
+    function getLocalIdent(this: unknown, ...args: Parameters<MinifiyCssIdentsPlugin.GetLocalIdentFn>) {
+      MinifiyCssIdentsPlugin.implicitInstance ??= new MinifiyCssIdentsPlugin();
+      return MinifiyCssIdentsPlugin.implicitInstance.getLocalIdent.apply(this, args);
+    }
+    return MinifiyCssIdentsPlugin.implicitInstance?.getLocalIdent ?? getLocalIdent;
   }
 }
 
@@ -109,6 +98,14 @@ function removeMap(filename: string) {
 
 namespace MinifiyCssIdentsPlugin {
   export type Error = MinifiyCssIdentsError;
+
+  export type GetLocalIdentFn = (
+    this: unknown,
+    context: LoaderContext<object>,
+    localIdentName: string,
+    localName: string,
+    options: object,
+  ) => string;
 
   export type IdentGenerator = IdentGeneratorImport;
 

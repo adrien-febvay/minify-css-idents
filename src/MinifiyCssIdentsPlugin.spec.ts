@@ -127,6 +127,18 @@ describe('Check MinifiyCssIdentsPlugin class', () => {
     expect(consoleWarnSpy).toHaveBeenCalledWith(`Failure to remove CSS identifier map file ${someFile}\n  Error`);
   });
 
+  it('Static method "getLocalIdent" gets last instance or defaults it', () => {
+    MinifiyCssIdentsPlugin.implicitInstance = void 0;
+    const getLocalIdent = MinifiyCssIdentsPlugin.getLocalIdent;
+    expect(getLocalIdent).not.toThrow();
+    const minifiyCssIdentsPlugin = MinifiyCssIdentsPlugin.implicitInstance;
+    expect(minifiyCssIdentsPlugin).not.toBe(void 0);
+    expect(getLocalIdent).not.toThrow();
+    expect(MinifiyCssIdentsPlugin.implicitInstance).toBe(minifiyCssIdentsPlugin);
+    expect(() => MinifiyCssIdentsPlugin.getLocalIdent()).not.toThrow();
+    expect(MinifiyCssIdentsPlugin.implicitInstance).toBe(minifiyCssIdentsPlugin);
+  });
+
   function itExpectsMode(
     mode: MinifiyCssIdentsPlugin['options']['mode'],
     ...expectations: ('toIgnoreENoEnt' | 'toLoad' | 'toEmit' | 'toRemove')[]
