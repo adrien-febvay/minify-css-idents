@@ -8,7 +8,7 @@ import OriginalMinifyCssIdentsPlugin from '../MinifyCssIdentsPlugin';
 export class MinifyCssIdentsPlugin extends OriginalMinifyCssIdentsPlugin {
   public declare enabled: boolean;
   public declare identGenerator: IdentGenerator;
-  public declare getLocalIdentCache?: (typeof MinifyCssIdentsPlugin)['getLocalIdent'];
+  public declare getLocalIdentCache?: OriginalMinifyCssIdentsPlugin.GetLocalIdentFn;
   public webpackOptions?: Partial<WebpackOptionsNormalized>;
 
   public constructor(
@@ -27,9 +27,9 @@ export class MinifyCssIdentsPlugin extends OriginalMinifyCssIdentsPlugin {
 
   public get getLocalIdent() {
     const superGetLocalIdent = super.getLocalIdent;
-    function getLocalIdent(resourcePath: string, localIdentName: string, localName: string): string;
+    function getLocalIdent(resourcePath?: string, localIdentName?: string, localName?: string): string;
     function getLocalIdent(context: LoaderContext<object>, localIdentName: string, localName: string): string;
-    function getLocalIdent(arg0: string | LoaderContext<object>, localIdentName: string, localName: string) {
+    function getLocalIdent(arg0: string | LoaderContext<object> = '', localIdentName = '', localName = '') {
       const contextArg = typeof arg0 === 'object' ? arg0 : { resourcePath: arg0 };
       const context = { mode: 'production', ...contextArg } as LoaderContext<object>;
       return superGetLocalIdent(context, localIdentName, localName, {});
@@ -37,16 +37,29 @@ export class MinifyCssIdentsPlugin extends OriginalMinifyCssIdentsPlugin {
     return getLocalIdent;
   }
 
-  public static getLocalIdent(resourcePath: string, localIdentName: string, localName: string): string;
-  public static getLocalIdent(context: LoaderContext<object>, localIdentName: string, localName: string): string;
-  public static getLocalIdent(arg0: string | LoaderContext<object>, localIdentName: string, localName: string) {
-    const contextArg = typeof arg0 === 'object' ? arg0 : { resourcePath: arg0 };
-    const context = { mode: 'production', ...contextArg } as LoaderContext<object>;
-    return OriginalMinifyCssIdentsPlugin.getLocalIdent(context, localIdentName, localName, {});
+  public static get getLocalIdent() {
+    const superGetLocalIdent = OriginalMinifyCssIdentsPlugin.getLocalIdent;
+    function getLocalIdent(resourcePath?: string, localIdentName?: string, localName?: string): string;
+    function getLocalIdent(context: LoaderContext<object>, localIdentName: string, localName: string): string;
+    function getLocalIdent(
+      this: unknown,
+      arg0: string | LoaderContext<object> = '',
+      localIdentName = '',
+      localName = '',
+    ) {
+      const contextArg = typeof arg0 === 'object' ? arg0 : { resourcePath: arg0 };
+      const context = { mode: 'production', ...contextArg } as LoaderContext<object>;
+      return superGetLocalIdent.call(this, context, localIdentName, localName, {});
+    }
+    return getLocalIdent;
   }
 
   public static get implicitInstance() {
     return OriginalMinifyCssIdentsPlugin.implicitInstance;
+  }
+
+  public static set implicitInstance(minifyCssIdentsPlugin: OriginalMinifyCssIdentsPlugin | undefined) {
+    OriginalMinifyCssIdentsPlugin.implicitInstance = minifyCssIdentsPlugin;
   }
 }
 

@@ -127,8 +127,20 @@ describe('Check MinifyCssIdentsPlugin class', () => {
     expect(consoleWarnSpy).toHaveBeenCalledWith(`Failure to remove CSS identifier map file ${someFile}\n  Error`);
   });
 
+  it('Static method "getLocalIdent" gets last instance or defaults it', () => {
+    MinifyCssIdentsPlugin.implicitInstance = void 0;
+    const getLocalIdent = MinifyCssIdentsPlugin.getLocalIdent;
+    expect(getLocalIdent).not.toThrow();
+    const minifyCssIdentsPlugin = MinifyCssIdentsPlugin.implicitInstance;
+    expect(minifyCssIdentsPlugin).not.toBe(void 0);
+    expect(getLocalIdent).not.toThrow();
+    expect(MinifyCssIdentsPlugin.implicitInstance).toBe(minifyCssIdentsPlugin);
+    expect(() => MinifyCssIdentsPlugin.getLocalIdent()).not.toThrow();
+    expect(MinifyCssIdentsPlugin.implicitInstance).toBe(minifyCssIdentsPlugin);
+  });
+
   function itExpectsMode(
-    mode: MinifiyCssIdentsPlugin['options']['mode'],
+    mode: MinifyCssIdentsPlugin['options']['mode'],
     ...expectations: ('toIgnoreENoEnt' | 'toLoad' | 'toEmit' | 'toRemove')[]
   ) {
     it(`Mode "${mode}" works as intended`, () => {
@@ -141,7 +153,7 @@ describe('Check MinifyCssIdentsPlugin class', () => {
       fs.readFileSync.mockName('fs.readFileSync');
       fs.rmSync.mockImplementation();
       fs.readFileSync.mockName('fs.rmSync');
-      const minifyCssIdents = new MinifiyCssIdentsPlugin({ mode, filename: someFile });
+      const minifyCssIdents = new MinifyCssIdentsPlugin({ mode, filename: someFile });
       const { beforeCompile, compilation } = minifyCssIdents.apply().hooks;
       compilation.emitAsset.mockImplementation();
       compilation.emitAsset.mockName('compilation.emitAsset');
