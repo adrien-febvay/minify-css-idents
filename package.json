@@ -43,7 +43,7 @@
     "@babel/preset-env": "^7.26.0",
     "@types/jest": "^29.5.13",
     "@types/node": "^22.9.0",
-    "@typescript-eslint/eslint-plugin": "^8.8.0",
+    "@typescript-eslint/eslint-plugin": "^8.13.0",
     "@typescript-eslint/parser": "^8.13.0",
     "babel-loader": "^9.2.1",
     "changelog-safeguard": "^1.0.1",
