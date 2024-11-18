@@ -1,5 +1,6 @@
 # Dev
 - First ident generated is now the actual value of the "startsWith" option
+- Function getLocalIdent accepts a custom function to make unminified identifiers
 - New package entrypoint for IdentGenerator
 
 # Version 0.4.0

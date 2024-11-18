@@ -3,7 +3,7 @@ import { isAbsolute, join, relative } from 'path';
 import { Compilation, Compiler, LoaderContext as LegacyLoaderContext, Module, sources } from 'webpack';
 import { MinifyCssIdentsError } from './MinifyCssIdentsError';
 import { escape, escapeLocalIdent } from './utils';
-import { defaultGetLocalIdent } from 'css-loader';
+import { defaultGetLocalIdent as legacyDefaultGetLocalIdent } from 'css-loader';
 import IdentGeneratorImport from './IdentGenerator';
 
 class MinifyCssIdentsPlugin extends Module {
@@ -11,7 +11,6 @@ class MinifyCssIdentsPlugin extends Module {
   protected readonly identGenerator: IdentGeneratorImport;
   protected applied = false;
   protected enabled: boolean | null;
-  protected getLocalIdentCache?: MinifyCssIdentsPlugin.GetLocalIdentFn;
 
   public constructor(options?: MinifyCssIdentsPlugin.Options | null) {
     super('css/minify-ident');
@@ -29,12 +28,24 @@ class MinifyCssIdentsPlugin extends Module {
   public get getLocalIdent() {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const plugin = this;
-    this.getLocalIdentCache ??= function getLocalIdent(context, ...otherArgs) {
-      plugin.enabled ??= context.mode === 'production';
-      const defaultLocalIdent = MinifiyCssIdentsPlugin.defaultGetLocalIdent.call(this, context, ...otherArgs);
-      return plugin.enabled ? plugin.identGenerator.generateIdent(defaultLocalIdent) : defaultLocalIdent;
-    };
-    return this.getLocalIdentCache;
+    let priorGetLocalIdent = defaultGetLocalIdent;
+    function getLocalIdent(this: unknown, ...args: [priorGetLocalIdent?: GetLocalIdentFn]): GetLocalIdentFn;
+    function getLocalIdent(this: unknown, ...args: Parameters<GetLocalIdentFn>): string;
+    function getLocalIdent(
+      this: unknown,
+      ...args: [priorGetLocalIdent?: GetLocalIdentFn] | Parameters<GetLocalIdentFn>
+    ): GetLocalIdentFn | string {
+      if (args[0] === void 0 || typeof args[0] === 'function') {
+        priorGetLocalIdent = args[0] ?? priorGetLocalIdent;
+        return getLocalIdent;
+      } else {
+        const [context, ...otherArgs] = args as Parameters<GetLocalIdentFn>;
+        plugin.enabled ??= context.mode === 'production';
+        const priorLocalIdent = priorGetLocalIdent.call(this, context, ...otherArgs);
+        return plugin.enabled ? plugin.identGenerator.generateIdent(priorLocalIdent) : priorLocalIdent;
+      }
+    }
+    return getLocalIdent;
   }
 
   public apply(compiler: Compiler) {
@@ -78,26 +89,39 @@ class MinifyCssIdentsPlugin extends Module {
 
   public static readonly symbol = Symbol(MinifyCssIdentsPlugin.name);
 
-  public static defaultGetLocalIdent(this: unknown, ...args: Parameters<MinifiyCssIdentsPlugin.GetLocalIdentFn>) {
-    const [, , localName] = args;
-    const defaultLocalIdent = defaultGetLocalIdent.apply(this, args);
-    // For some reason, defaultGetLocalIdent does not get all the job done
-    // and does not replace [local] in the ident template nor escape the resulting ident.
-    const resolvedLocalIdent = defaultLocalIdent.replace(/\[local]/gi, escape(localName));
-    return escapeLocalIdent(resolvedLocalIdent);
-  }
+  public static readonly defaultGetLocalIdent = defaultGetLocalIdent;
 
   public static get getLocalIdent() {
     let minifyCssIdentsPlugin: MinifyCssIdentsPlugin | undefined;
-    function getLocalIdent(this: unknown, ...args: Parameters<MinifyCssIdentsPlugin.GetLocalIdentFn>) {
-      const [context] = args;
-      minifyCssIdentsPlugin ??= context[MinifyCssIdentsPlugin.symbol];
-      minifyCssIdentsPlugin ??= MinifyCssIdentsPlugin.implicitInstance;
-      minifyCssIdentsPlugin ??= new MinifyCssIdentsPlugin();
-      return minifyCssIdentsPlugin.getLocalIdent.apply(this, args);
+    let priorGetLocalIdent = defaultGetLocalIdent;
+    function getLocalIdent(this: unknown, ...args: [priorGetLocalIdent?: GetLocalIdentFn]): GetLocalIdentFn;
+    function getLocalIdent(this: unknown, ...args: Parameters<GetLocalIdentFn>): string;
+    function getLocalIdent(
+      this: unknown,
+      ...args: [priorGetLocalIdent?: GetLocalIdentFn] | Parameters<GetLocalIdentFn>
+    ): GetLocalIdentFn | string {
+      if (args[0] === void 0 || typeof args[0] === 'function') {
+        priorGetLocalIdent = args[0] ?? priorGetLocalIdent;
+        return getLocalIdent;
+      } else {
+        const [context, ...otherArgs] = args as Parameters<GetLocalIdentFn>;
+        minifyCssIdentsPlugin ??= context[MinifyCssIdentsPlugin.symbol];
+        minifyCssIdentsPlugin ??= MinifyCssIdentsPlugin.implicitInstance;
+        minifyCssIdentsPlugin ??= new MinifyCssIdentsPlugin();
+        return minifyCssIdentsPlugin.getLocalIdent(priorGetLocalIdent).call(this, context, ...otherArgs);
+      }
     }
     return getLocalIdent;
   }
+}
+
+function defaultGetLocalIdent(this: unknown, ...args: Parameters<GetLocalIdentFn>) {
+  const [, , localName] = args;
+  const defaultLocalIdent = legacyDefaultGetLocalIdent.apply(this, args);
+  // For some reason, defaultGetLocalIdent does not get all the job done
+  // and does not replace [local] in the ident template nor escape the resulting ident.
+  const resolvedLocalIdent = defaultLocalIdent.replace(/\[local]/gi, escape(localName));
+  return escapeLocalIdent(resolvedLocalIdent);
 }
 
 function removeMap(filename: string) {
@@ -112,13 +136,15 @@ function removeMap(filename: string) {
 namespace MinifyCssIdentsPlugin {
   export type Error = MinifyCssIdentsError;
 
-  export type GetLocalIdentFn = (
-    this: unknown,
-    context: LoaderContext,
-    localIdentName: string,
-    localName: string,
-    options: object,
-  ) => string;
+  export interface GetLocalIdentFn {
+    (this: unknown, context: LoaderContext, localIdentName: string, localName: string, options: object): string;
+  }
+
+  export namespace GetLocalIdentFn {
+    export interface Raw extends GetLocalIdentFn {
+      (priorGetLocalIdent?: GetLocalIdentFn): GetLocalIdentFn;
+    }
+  }
 
   export type IdentGenerator = IdentGeneratorImport;
 
@@ -152,5 +178,7 @@ namespace MinifyCssIdentsPlugin {
     }
   }
 }
+
+type GetLocalIdentFn = MinifyCssIdentsPlugin.GetLocalIdentFn;
 
 export = MinifyCssIdentsPlugin;

@@ -30,33 +30,51 @@ export class MinifyCssIdentsPlugin extends OriginalMinifyCssIdentsPlugin {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const minifyCssIdentsPlugin = this;
     const superGetLocalIdent = super.getLocalIdent;
+    let priorGetLocalIdent: GetLocalIdentFn | undefined = void 0;
+    function getLocalIdent(priorGetLocalIdent?: GetLocalIdentFn): MockedGetLocalIdentFn;
     function getLocalIdent(resourcePath?: string, localIdentName?: string, localName?: string): string;
     function getLocalIdent(context: LoaderContext<object>, localIdentName: string, localName: string): string;
-    function getLocalIdent(arg0: string | LoaderContext<object> = '', localIdentName = '', localName = '') {
-      const contextArg = typeof arg0 === 'object' ? arg0 : { resourcePath: arg0 };
-      const loaderContext = minifyCssIdentsPlugin.compiler?.hooks.compilation.loaderContext;
-      const context = { mode: 'production', ...loaderContext, ...contextArg } as LoaderContext<object>;
-      return superGetLocalIdent(context, localIdentName, localName, {});
+    function getLocalIdent(
+      arg0?: GetLocalIdentFn | string | LoaderContext<object>,
+      localIdentName = '',
+      localName = '',
+    ) {
+      if (arg0 === void 0 || typeof arg0 === 'function') {
+        priorGetLocalIdent = arg0;
+        return getLocalIdent;
+      } else {
+        const contextArg = typeof arg0 === 'object' ? arg0 : { resourcePath: arg0 };
+        const loaderContext = minifyCssIdentsPlugin.compiler?.hooks.compilation.loaderContext;
+        const context = { mode: 'production', ...loaderContext, ...contextArg } as LoaderContext<object>;
+        return superGetLocalIdent(priorGetLocalIdent)(context, localIdentName, localName, {});
+      }
     }
     return getLocalIdent;
   }
 
   public static get getLocalIdent() {
     const superGetLocalIdent = OriginalMinifyCssIdentsPlugin.getLocalIdent;
-    function getLocalIdent(resourcePath?: string, localIdentName?: string, localName?: string): string;
+    let priorGetLocalIdent: GetLocalIdentFn | undefined = void 0;
+    function getLocalIdent(priorGetLocalIdent?: GetLocalIdentFn): MockedGetLocalIdentFn;
+    function getLocalIdent(resourcePath: string, localIdentName?: string, localName?: string): string;
     function getLocalIdent(context: LoaderContext<object>, localIdentName?: string, localName?: string): string;
     function getLocalIdent(
       this: unknown,
-      arg0: string | LoaderContext<object> = '',
+      arg0?: GetLocalIdentFn | string | LoaderContext<object>,
       localIdentName = '',
       localName = '',
     ) {
-      const contextArg = typeof arg0 === 'object' ? arg0 : { resourcePath: arg0 };
-      const instance = MinifyCssIdentsPlugin.implicitInstance;
-      const compiler = instance instanceof MinifyCssIdentsPlugin ? instance.compiler : null;
-      const loaderContext = compiler?.hooks.compilation.loaderContext;
-      const context = { mode: 'production', ...loaderContext, ...contextArg } as LoaderContext<object>;
-      return superGetLocalIdent.call(this, context, localIdentName, localName, {});
+      if (arg0 === void 0 || typeof arg0 === 'function') {
+        priorGetLocalIdent = arg0;
+        return getLocalIdent;
+      } else {
+        const contextArg = typeof arg0 === 'object' ? arg0 : { resourcePath: arg0 };
+        const instance = MinifyCssIdentsPlugin.implicitInstance;
+        const compiler = instance instanceof MinifyCssIdentsPlugin ? instance.compiler : null;
+        const loaderContext = compiler?.hooks.compilation.loaderContext;
+        const context = { mode: 'production', ...loaderContext, ...contextArg } as LoaderContext<object>;
+        return superGetLocalIdent(priorGetLocalIdent).call(this, context, localIdentName, localName, {});
+      }
     }
     return getLocalIdent;
   }
@@ -70,6 +88,14 @@ export class MinifyCssIdentsPlugin extends OriginalMinifyCssIdentsPlugin {
   }
 
   public static readonly symbol: typeof OriginalMinifyCssIdentsPlugin.symbol = OriginalMinifyCssIdentsPlugin.symbol;
+}
+
+type GetLocalIdentFn = OriginalMinifyCssIdentsPlugin.GetLocalIdentFn;
+
+interface MockedGetLocalIdentFn {
+  (priorGetLocalIdent?: GetLocalIdentFn): MockedGetLocalIdentFn;
+  (resourcePath?: string, localIdentName?: string, localName?: string): string;
+  (context: LoaderContext<object>, localIdentName?: string, localName?: string): string;
 }
 
 function mockCompiler(

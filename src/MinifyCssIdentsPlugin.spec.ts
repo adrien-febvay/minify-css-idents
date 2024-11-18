@@ -89,12 +89,19 @@ describe('Check MinifyCssIdentsPlugin class', () => {
     expect(fs.readFileSync).toHaveBeenCalledWith(someFile, 'utf-8');
   });
 
-  it('Idents are made from context', () => {
+  it('Idents are made from default idents', () => {
     const minifyCssIdents1 = new MinifyCssIdentsPlugin();
     minifyCssIdents1.getLocalIdent('some-path', 'n/a', 'some-name');
     expect(minifyCssIdents1.identGenerator.identMap).toStrictEqual({ '___some-path__some-name': 'a' });
     const minifyCssIdents2 = new MinifyCssIdentsPlugin({ enabled: false });
     expect(minifyCssIdents2.getLocalIdent('some-path', 'n/a', 'some-name')).toBe('___some-path__some-name');
+  });
+
+  it('Idents are made from custom idents', () => {
+    const minifyCssIdents1 = new MinifyCssIdentsPlugin();
+    minifyCssIdents1.getLocalIdent(() => 'custom-ident-1')('');
+    MinifyCssIdentsPlugin.getLocalIdent(() => 'custom-ident-2')('');
+    expect(minifyCssIdents1.identGenerator.identMap).toStrictEqual({ 'custom-ident-1': 'a', 'custom-ident-2': 'b' });
   });
 
   it('Ident map is loaded', () => {
@@ -137,16 +144,16 @@ describe('Check MinifyCssIdentsPlugin class', () => {
     // Auto-instanciation
     MinifyCssIdentsPlugin.implicitInstance = void 0;
     const getLocalIdent = MinifyCssIdentsPlugin.getLocalIdent;
-    expect(getLocalIdent).not.toThrow();
+    expect(() => getLocalIdent('')).not.toThrow();
     const minifyCssIdentsPlugin1 = MinifyCssIdentsPlugin.implicitInstance;
     expect(minifyCssIdentsPlugin1).not.toBe(void 0);
 
-    // Use cached instance
-    expect(getLocalIdent).not.toThrow();
+    // Cached instance
+    expect(() => getLocalIdent('')).not.toThrow();
     expect(MinifyCssIdentsPlugin.implicitInstance).toBe(minifyCssIdentsPlugin1);
 
     // Use implicit instance
-    expect(MinifyCssIdentsPlugin.getLocalIdent).not.toThrow();
+    expect(() => MinifyCssIdentsPlugin.getLocalIdent('')).not.toThrow();
     expect(MinifyCssIdentsPlugin.implicitInstance).toBe(minifyCssIdentsPlugin1);
 
     // Use instance in loader context

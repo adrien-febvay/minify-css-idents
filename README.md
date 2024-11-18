@@ -59,6 +59,14 @@ module.exports = {
 };
 ```
 
+To have customized unminified identifiers, you may specify it here:
+
+```js
+modules: {
+  getLocalIdent: MinifyCssIdentsPlugin.getLocalIdent(prior_getLocalIdent_fn_here),
+}
+```
+
 Finally, add the minifier instance to the plugins.
 
 ```js
