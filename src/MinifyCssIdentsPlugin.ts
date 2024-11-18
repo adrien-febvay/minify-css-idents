@@ -29,15 +29,10 @@ class MinifyCssIdentsPlugin extends Module {
   public get getLocalIdent() {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const plugin = this;
-    this.getLocalIdentCache ??= function getLocalIdent(...args) {
-      const [context, , localName] = args;
+    this.getLocalIdentCache ??= function getLocalIdent(context, ...otherArgs) {
       plugin.enabled ??= context.mode === 'production';
-      const defaultLocalIdent = defaultGetLocalIdent.apply(this, args);
-      // For some reason, defaultGetLocalIdent does not get all the job done
-      // and does not replace [local] in the ident template nor escape the resulting ident.
-      const resolvedLocalIdent = defaultLocalIdent.replace(/\[local]/gi, escape(localName));
-      const escapedLocalIdent = escapeLocalIdent(resolvedLocalIdent);
-      return plugin.enabled ? plugin.identGenerator.generateIdent(escapedLocalIdent) : escapedLocalIdent;
+      const defaultLocalIdent = MinifiyCssIdentsPlugin.defaultGetLocalIdent.call(this, context, ...otherArgs);
+      return plugin.enabled ? plugin.identGenerator.generateIdent(defaultLocalIdent) : defaultLocalIdent;
     };
     return this.getLocalIdentCache;
   }
@@ -82,6 +77,15 @@ class MinifyCssIdentsPlugin extends Module {
   protected static implicitInstance?: MinifyCssIdentsPlugin;
 
   public static readonly symbol = Symbol(MinifyCssIdentsPlugin.name);
+
+  public static defaultGetLocalIdent(this: unknown, ...args: Parameters<MinifiyCssIdentsPlugin.GetLocalIdentFn>) {
+    const [, , localName] = args;
+    const defaultLocalIdent = defaultGetLocalIdent.apply(this, args);
+    // For some reason, defaultGetLocalIdent does not get all the job done
+    // and does not replace [local] in the ident template nor escape the resulting ident.
+    const resolvedLocalIdent = defaultLocalIdent.replace(/\[local]/gi, escape(localName));
+    return escapeLocalIdent(resolvedLocalIdent);
+  }
 
   public static get getLocalIdent() {
     let minifyCssIdentsPlugin: MinifyCssIdentsPlugin | undefined;
