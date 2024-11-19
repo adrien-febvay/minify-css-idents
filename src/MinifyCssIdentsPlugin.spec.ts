@@ -1,9 +1,12 @@
-import originalFs from 'fs';
+import type originalFs from 'fs';
+import type cssLoaderMock from './__mocks__/css-loader';
 import { join, sep } from 'path';
-import { sources } from 'webpack';
+import { LoaderContext, sources } from 'webpack';
 import { MinifyCssIdentsPlugin } from './__mocks__/MinifyCssIdentsPlugin';
 
 jest.mock('css-loader');
+const cssLoader = jest.requireMock<typeof cssLoaderMock>('css-loader');
+
 jest.mock('fs');
 const fs = jest.requireMock<{ [Key in keyof typeof originalFs]: jest.Mock }>('fs');
 
@@ -104,6 +107,67 @@ describe('Check MinifyCssIdentsPlugin class', () => {
     expect(minifyCssIdents1.identGenerator.identMap).toStrictEqual({ 'custom-ident-1': 'a', 'custom-ident-2': 'b' });
   });
 
+  it('The `css-loader` is wrapped correctly', () => {
+    const minifyCssIdents = new MinifyCssIdentsPlugin();
+
+    const cssLoader1 = minifyCssIdents.cssLoader;
+    const options1 = {};
+    const context1 = { getOptions: () => options1, resourcePath: 'some-path' } as LoaderContext<object>;
+    void cssLoader1.pitch?.call(context1, '', '', {});
+    expect(cssLoader1.call(context1, 'ident-1 ident-2 ident-1')).toBe('a b a');
+    expect(minifyCssIdents.identGenerator.identMap).toStrictEqual({
+      '___some-path__ident-1': 'a',
+      '___some-path__ident-2': 'b',
+    });
+
+    const cssLoader2 = MinifyCssIdentsPlugin.cssLoader;
+    const options2 = {};
+    const context2 = { getOptions: () => options2, resourcePath: 'other-path' } as LoaderContext<object>;
+    void cssLoader2.pitch?.call(context2, '', '', {});
+    expect(cssLoader2.call(context2, 'ident-1 ident-2 ident-1')).toBe('c d c');
+    expect(minifyCssIdents.identGenerator.identMap).toStrictEqual({
+      '___some-path__ident-1': 'a',
+      '___some-path__ident-2': 'b',
+      '___other-path__ident-1': 'c',
+      '___other-path__ident-2': 'd',
+    });
+  });
+
+  it('The `css-loader` pitch is called if it exists', () => {
+    cssLoader.pitch = () => 'defined';
+    const context = { getOptions: () => ({}) } as LoaderContext<object>;
+    expect(MinifyCssIdentsPlugin.cssLoader.pitch?.call(context, '', '', {})).toBe('defined');
+  });
+
+  it('The getOptions() method is overriden once and only once', () => {
+    const minifyCssIdents = new MinifyCssIdentsPlugin();
+    const cssLoader = minifyCssIdents.cssLoader;
+    const context = { getOptions(this: void) {} };
+    const getOptions0 = context.getOptions;
+    void cssLoader.pitch?.call(context as LoaderContext<object>, '', '', {});
+    const getOptions1 = context.getOptions;
+    expect(getOptions1 === getOptions0).toBe(false);
+    void cssLoader.pitch?.call(context as LoaderContext<object>, '', '', {});
+    const getOptions2 = context.getOptions;
+    expect(getOptions2 === getOptions1).toBe(true);
+  });
+
+  it('The getLocalIdent option is voided when not a function', () => {
+    const minifyCssIdents1 = new MinifyCssIdentsPlugin({ enabled: false });
+    const cssLoader1 = minifyCssIdents1.cssLoader;
+    const options1 = { modules: { getLocalIdent: () => 'custom-ident' } };
+    const context1 = { getOptions: () => options1, resourcePath: 'some-path' } as LoaderContext<object>;
+    void cssLoader1.pitch?.call(context1, '', '', {});
+    expect(cssLoader1.call(context1, 'ident-1')).toBe('custom-ident');
+
+    const minifyCssIdents2 = new MinifyCssIdentsPlugin({ enabled: false });
+    const cssLoader2 = minifyCssIdents2.cssLoader;
+    const options2 = { modules: { getLocalIdent: 'bad-value' } };
+    const context2 = { getOptions: () => options2, resourcePath: 'some-path' } as LoaderContext<object>;
+    void cssLoader2.pitch?.call(context2, '', '', {});
+    expect(cssLoader2.call(context2, 'ident-1')).toBe('___some-path__ident-1');
+  });
+
   it('Ident map is loaded', () => {
     fs.readFileSync.mockImplementation(() => '{}');
     const minifyCssIdents = new MinifyCssIdentsPlugin({ filename: someFile });
@@ -165,7 +229,8 @@ describe('Check MinifyCssIdentsPlugin class', () => {
     // eslint-disable-next-line @typescript-eslint/unbound-method
     const get = jest.fn(Object.getOwnPropertyDescriptor(MinifyCssIdentsPlugin.prototype, 'getLocalIdent')?.get);
     Object.defineProperty(minifyCssIdentsPlugin2, 'getLocalIdent', { get });
-    expect(() => MinifyCssIdentsPlugin.getLocalIdent(compilation.loaderContext)).not.toThrow();
+    const loaderContext = { ...compilation.loaderContext, resourcePath: '' };
+    expect(() => MinifyCssIdentsPlugin.getLocalIdent(loaderContext)).not.toThrow();
     expect(get).toHaveBeenCalledTimes(1);
   });
 

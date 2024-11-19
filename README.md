@@ -29,13 +29,7 @@ npm install --save-dev minify-css-idents
 
 This is the typical configuration that should be compatible all use cases.
 
-First, import the minifier. 
-
-```js
-const MinifyCssIdentsPlugin = require("minify-css-idents");
-```
-
-Then set `getLocalIdent` option of the `css-loader`.
+Just replace the `css-loader` with `minify-css-idents/css-loader`, ie:
 
 ```js
 module.exports = {
@@ -44,14 +38,15 @@ module.exports = {
       {
         test: /\.css$/,
         use: [
+          "style-loader",
           {
-            loader: "css-loader",
+            loader: "minify-css-idents/css-loader",
             options: {
-              modules: {
-                getLocalIdent: MinifyCssIdentsPlugin.getLocalIdent,
-              }
+              // Your usual css-loader configuration here,
+              // to setup how to build unminified CSS identifiers
             }
-          }
+          },
+          "postcss-loader"
         ]
       }
     ]
@@ -59,17 +54,10 @@ module.exports = {
 };
 ```
 
-To have customized unminified identifiers, you may specify it here:
+Eventually, add the minifier to the plugins:
 
 ```js
-modules: {
-  getLocalIdent: MinifyCssIdentsPlugin.getLocalIdent(prior_getLocalIdent_fn_here),
-}
-```
-
-Finally, add the minifier instance to the plugins.
-
-```js
+const MinifyCssIdentsPlugin = require("minify-css-idents");
 module.exports = {
   plugins: [
     new MinifyCssIdentsPlugin({
@@ -80,7 +68,46 @@ module.exports = {
 };
 ```
 
-If your project has a unique build step, thus using Webpack a single time, and you don't want a map file to be emitted or specify any option, you may omit the last step.
+If your project has a unique build step and you don't want a map file to be emitted or specify any option, you may omit the plugin altogether. The loader will then instanciate one with the default options on its own.
+
+### Alternative syntax
+
+Should `minify-css-idents/css-loader` not work properly, or should your configuration not allow its use, you may rely on the `MinifyCssIdentsPlugin.getLocalIdent` function, ie:
+
+
+```js
+const MinifyCssIdentsPlugin = require("minify-css-idents");
+module.exports = {
+  module: {
+    rules: [
+      {
+        test: /\.css$/,
+        use: [
+          "style-loader",
+          {
+            loader: "css-loader",
+            options: {
+              modules: {
+                getLocalIdent: MinifyCssIdentsPlugin.getLocalIdent
+              }
+            }
+          },
+          "postcss-loader"
+        ]
+      }
+    ]
+  }
+};
+```
+
+If you already rely on a custom `getLocalIdent` function to generate unminified CSS identifiers, you may specify it:
+
+```js
+  modules: {
+    getLocalIdent: MinifyCssIdentsPlugin.getLocalIdent(your_former_getLocalIdent_here)
+  }
+```
+
 
 ## Options
 
@@ -99,7 +126,7 @@ const minifyCssIdentsPlugin = new MinifyCssIdentsPlugin({
 
 ### options.enabled
 
-Default value: `true` on production mode, `false` otherwise.
+Default value: `true` when Webpack is on production mode, `false` otherwise.
 
 Enables the minifying of CSS identifiers. By default, the minifying is active on production mode for optimization, but disabled on development mode for debugging purposes.
 
@@ -131,7 +158,7 @@ Pathname to the identifier map file. Useful if:
 
 Default value: `2`
 
-The identation size in the identifier map file. Set it to `0` if you don't want spaces and line returns.
+The indentation size to use in the identifier map file. Set it to `0` if you want a minimal file without spaces and line returns.
 
 ### options.mode
 
@@ -166,9 +193,9 @@ Possible values:
   </tr>
 </table>
 
-Please note that `"default"` is the only mode where the minifier won't throw an error if the map doesn't exist.
+Please note that `"default"` is the only mode where the minifier won't throw an error if it doesn't find the map file when trying to load it.
 
-The creation, update or deletion of the map will occur when Webpack is done emitting files.
+The creation, update or deletion of the map will occur when Webpack is done precessing assets.
 
 ### options.startIdent
 
@@ -178,14 +205,16 @@ Identifier to start the generation with.
 
 Note: Will be skipped if excluded in the options.
 
-### How the package works
+## How the package works
 
-It uses the `getLocalIdent` option of `css-loader` to replace the CSS identifiers with generated ones.
+The `minify-css-idents/css-loader` wraps `css-loader` in order to override its [getLocalIdent](https://webpack.js.org/loaders/css-loader/#getlocalident) option, which allows to specify a function to generate CSS identifiers.
 
-When registered in Webpack's plug-ins, it has the opportunity to create, update and/or load an indentifier map file.
+Before generating a minified identifier, the `MinifyCssIdentsPlugin.getLocalIdent` generates an unminified one as `css-loader` would, using the [getLocalIdent](https://webpack.js.org/loaders/css-loader/#getlocalident) function specified, or the default one.
+
+When `MinifyCssIdentsPlugin` is registered in Webpack's plug-ins, it has the opportunity to create, update and/or load an indentifier map file.
 This feature is critical to keep the identifiers consistent across build steps.
 
-It uses the `beforeCompile` hook of Webpack's compiler to read the map file, then the `compilation` and`afterProcessAssets` hooks to write/delete it.
+It uses the `beforeCompile` hook of Webpack's compiler to read the map file, then the `compilation` and `afterProcessAssets` hooks to write/delete it.
 
 ## Credits
 

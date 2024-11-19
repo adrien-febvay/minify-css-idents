@@ -52,6 +52,10 @@ export class MinifyCssIdentsPlugin extends OriginalMinifyCssIdentsPlugin {
     return getLocalIdent;
   }
 
+  public static get cssLoader() {
+    return OriginalMinifyCssIdentsPlugin.cssLoader;
+  }
+
   public static get getLocalIdent() {
     const superGetLocalIdent = OriginalMinifyCssIdentsPlugin.getLocalIdent;
     let priorGetLocalIdent: GetLocalIdentFn | undefined = void 0;

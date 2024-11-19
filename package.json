@@ -36,7 +36,8 @@
   ],
   "exports": {
     ".": "./dist/MinifyCssIdentsPlugin.js",
-    "./IdentGenerator": "./dist/IdentGenerator.js"
+    "./IdentGenerator": "./dist/IdentGenerator.js",
+    "./css-loader": "./dist/css-loader.js"
   },
   "devDependencies": {
     "@babel/core": "^7.25.8",

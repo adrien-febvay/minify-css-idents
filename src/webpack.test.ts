@@ -31,8 +31,12 @@ const expectedIdentMap = `{
 `;
 
 describe('Check Webpack compilation - Prerquisites', () => {
-  it('Package builds', () => {
+  it('The package builds', () => {
     expect(() => run('npm run build')).not.toThrow();
+  });
+
+  it('The package is mocked in node_modules', () => {
+    expect(() => run('node bin/self-install')).not.toThrow();
   });
 });
 

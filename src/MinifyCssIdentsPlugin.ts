@@ -1,9 +1,11 @@
 import { rmSync } from 'fs';
 import { isAbsolute, join, relative } from 'path';
+import { Schema } from 'schema-utils/declarations/validate';
 import { Compilation, Compiler, LoaderContext as LegacyLoaderContext, Module, sources } from 'webpack';
+import { LoaderDefinition, LoaderDefinitionFunction, PitchLoaderDefinitionFunction } from 'webpack';
 import { MinifyCssIdentsError } from './MinifyCssIdentsError';
-import { escape, escapeLocalIdent } from './utils';
-import { defaultGetLocalIdent as legacyDefaultGetLocalIdent } from 'css-loader';
+import { escape, escapeLocalIdent, isDictLike } from './utils';
+import legacyCssLoader, { defaultGetLocalIdent as legacyDefaultGetLocalIdent } from 'css-loader';
 import IdentGeneratorImport from './IdentGenerator';
 
 class MinifyCssIdentsPlugin extends Module {
@@ -23,6 +25,10 @@ class MinifyCssIdentsPlugin extends Module {
     });
     this.enabled = this.options.enabled;
     MinifyCssIdentsPlugin.implicitInstance = this;
+  }
+
+  public get cssLoader() {
+    return MinifyCssIdentsPlugin.createCssLoader(this);
   }
 
   public get getLocalIdent() {
@@ -91,8 +97,46 @@ class MinifyCssIdentsPlugin extends Module {
 
   public static readonly defaultGetLocalIdent = defaultGetLocalIdent;
 
+  protected static createCssLoader(plugin?: MinifyCssIdentsPlugin): LoaderDefinition {
+    let minifyCssIdentsPlugin = plugin;
+    function pitch(this: MinifyCssIdentsPlugin.LoaderContext, ...args: Parameters<PitchLoaderDefinitionFunction>) {
+      const getOptions = this.getOptions;
+      if (!getOptions[MinifyCssIdentsPlugin.symbol]) {
+        this.getOptions = function MinifyCssIdentsPlugin_getOptions(schema: Schema = {}) {
+          const options = getOptions.call(this, schema);
+          if (!options[MinifyCssIdentsPlugin.symbol]) {
+            options[MinifyCssIdentsPlugin.symbol] = true;
+            options.modules ??= {};
+            if (isDictLike(options.modules)) {
+              const { getLocalIdent } = options.modules;
+              minifyCssIdentsPlugin ??= MinifyCssIdentsPlugin.getInstance(this);
+              options.modules.getLocalIdent = MinifyCssIdentsPlugin.getLocalIdent(
+                getLocalIdent instanceof Function ? (getLocalIdent as GetLocalIdentFn) : void 0,
+              );
+            }
+          }
+          return options;
+        };
+        this.getOptions[MinifyCssIdentsPlugin.symbol] = true;
+      }
+      return legacyCssLoader.pitch?.apply(this, args);
+    }
+    function cssLoader(this: MinifyCssIdentsPlugin.LoaderContext, ...args: Parameters<LoaderDefinitionFunction>) {
+      return legacyCssLoader.apply(this, args);
+    }
+    return Object.assign(cssLoader, { ...legacyCssLoader, pitch });
+  }
+
+  public static get cssLoader() {
+    return MinifyCssIdentsPlugin.createCssLoader();
+  }
+
+  protected static getInstance(context: MinifyCssIdentsPlugin.LoaderContext) {
+    return context[this.symbol] ?? this.implicitInstance ?? new this();
+  }
+
   public static get getLocalIdent() {
-    let minifyCssIdentsPlugin: MinifyCssIdentsPlugin | undefined;
+    let minifyCssIdentsPlugin: MinifyCssIdentsPlugin;
     let priorGetLocalIdent = defaultGetLocalIdent;
     function getLocalIdent(this: unknown, ...args: [priorGetLocalIdent?: GetLocalIdentFn]): GetLocalIdentFn;
     function getLocalIdent(this: unknown, ...args: Parameters<GetLocalIdentFn>): string;
@@ -105,9 +149,7 @@ class MinifyCssIdentsPlugin extends Module {
         return getLocalIdent;
       } else {
         const [context, ...otherArgs] = args as Parameters<GetLocalIdentFn>;
-        minifyCssIdentsPlugin ??= context[MinifyCssIdentsPlugin.symbol];
-        minifyCssIdentsPlugin ??= MinifyCssIdentsPlugin.implicitInstance;
-        minifyCssIdentsPlugin ??= new MinifyCssIdentsPlugin();
+        minifyCssIdentsPlugin ??= MinifyCssIdentsPlugin.getInstance(context);
         return minifyCssIdentsPlugin.getLocalIdent(priorGetLocalIdent).call(this, context, ...otherArgs);
       }
     }
@@ -141,7 +183,7 @@ namespace MinifyCssIdentsPlugin {
   }
 
   export namespace GetLocalIdentFn {
-    export interface Raw extends GetLocalIdentFn {
+    export interface Extended extends GetLocalIdentFn {
       (priorGetLocalIdent?: GetLocalIdentFn): GetLocalIdentFn;
     }
   }
@@ -160,8 +202,11 @@ namespace MinifyCssIdentsPlugin {
     }
   }
 
-  export interface LoaderContext extends LegacyLoaderContext<object> {
+  export interface LoaderContext extends LegacyLoaderContext<{ [key in string | symbol]?: unknown }> {
     [MinifyCssIdentsPlugin.symbol]?: MinifyCssIdentsPlugin;
+    getOptions: LegacyLoaderContext<{ [key in string | symbol]?: unknown }>['getOptions'] & {
+      [MinifyCssIdentsPlugin.symbol]?: true;
+    };
   }
 
   export interface Options extends IdentGenerator.Options {
@@ -180,5 +225,9 @@ namespace MinifyCssIdentsPlugin {
 }
 
 type GetLocalIdentFn = MinifyCssIdentsPlugin.GetLocalIdentFn;
+
+namespace GetLocalIdentFn {
+  export type Extended = MinifyCssIdentsPlugin.GetLocalIdentFn.Extended;
+}
 
 export = MinifyCssIdentsPlugin;
