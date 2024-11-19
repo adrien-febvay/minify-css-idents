@@ -1,4 +1,4 @@
-# Dev
+# Version 0.5.0
 - First ident generated is now the actual value of the "startsWith" option
 - Function getLocalIdent accepts a custom function to make unminified identifiers
 - New wrapper for css-loader with entrypoint in order to simplify Webpack's configuration greatly
