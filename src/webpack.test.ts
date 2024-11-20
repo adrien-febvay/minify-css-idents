@@ -30,6 +30,42 @@ const expectedIdentMap = `{
 }
 `;
 
+const expectedMinifiedCss = `
+.a {
+  display: none;
+}
+
+.b {
+  display: none;
+}
+
+.c {
+  display: none;
+}
+
+.d {
+  display: none;
+}
+`.trim();
+
+const expectedUnminifiedCss = `
+.___styles__alpha {
+  display: none;
+}
+
+.___styles__beta {
+  display: none;
+}
+
+.___styles__gamma {
+  display: none;
+}
+
+.___styles__delta {
+  display: none;
+}
+`.trim();
+
 describe('Check Webpack compilation - Prerquisites', () => {
   it('The package builds', () => {
     expect(() => run('npm run build')).not.toThrow();
@@ -42,39 +78,74 @@ describe('Check Webpack compilation - Prerquisites', () => {
 
 for (const entry of readdirSync('test-cases')) {
   if (/^syntax-\d+-/.test(entry)) {
-    const [, syntaxIndex, ...syntaxName] = entry.split('-');
-    describe(`Check Webpack compilation - Case ${syntaxIndex}: ${syntaxName.join('-')}`, () => {
-      it(`Test project test-cases/${entry}/src1 builds`, () => {
-        expect(() => run(`npm run build-test-case -- ${syntaxIndex} 1`)).not.toThrow();
-      });
-
-      it('Ident map is correct', () => {
-        expect(readFileSync(resolve('test-cases', entry, 'dist1/styles.map.json'), 'utf-8')).toBe(expectedIdentMap);
-      });
-
-      it(`Test project test-cases/${entry}/src2 builds`, () => {
-        expect(() => run(`npm run build-test-case ${syntaxIndex} 2`)).not.toThrow();
-      });
-
-      it('Ident map is still correct', () => {
-        expect(readFileSync(resolve('test-cases', entry, 'dist1/styles.map.json'), 'utf-8')).toBe(expectedIdentMap);
-      });
-
-      it('Resulting CSS module is correct', () => {
-        const expected = JSON.parse(expectedIdentMap.replace(/___styles__/g, ''));
-        const received = JSON.parse(run(`node test-cases/${entry}/dist2`));
-        expect(received).toStrictEqual(expected);
-      });
-
-      it(`Test project test-cases/${entry}/src3 builds`, () => {
-        expect(() => run(`npm run build-test-case ${syntaxIndex} 3`)).not.toThrow();
-      });
-
-      it('Ident map is removed', () => {
-        const path = resolve('test-cases', entry, '/dist1/css/styles.map.json');
-        const message = `ENOENT: no such file or directory, stat '${path}'`;
-        expect(() => statSync(path)).toThrow(message);
-      });
-    });
+    const [, syntaxIndex = '', ...syntaxNameChunks] = entry.split('-');
+    const syntaxName = syntaxNameChunks.join('-');
+    if (syntaxName.endsWith('-without-plugin')) {
+      testCaseWithoutPlugin(entry, syntaxIndex, syntaxName);
+    } else {
+      testCaseWithPlugin(entry, syntaxIndex, syntaxName);
+    }
   }
+}
+
+function testCaseWithPlugin(entry: string, syntaxIndex: string, syntaxName: string) {
+  describe(`Check Webpack compilation - Case ${syntaxIndex}: ${syntaxName}`, () => {
+    it(`Project test-cases/${entry}/src1 builds`, () => {
+      expect(() => run(`npm run build-test-case -- ${syntaxIndex} 1`)).not.toThrow();
+    });
+
+    it('Ident map is correct', () => {
+      expect(readFileSync(resolve('test-cases', entry, 'dist1/styles.map.json'), 'utf-8')).toBe(expectedIdentMap);
+    });
+
+    it(`Project test-cases/${entry}/src2 builds`, () => {
+      expect(() => run(`npm run build-test-case ${syntaxIndex} 2`)).not.toThrow();
+    });
+
+    it('Ident map is still correct', () => {
+      expect(readFileSync(resolve('test-cases', entry, 'dist1/styles.map.json'), 'utf-8')).toBe(expectedIdentMap);
+    });
+
+    it('Resulting CSS module is correct', () => {
+      const expected = JSON.parse(expectedIdentMap.replace(/___styles__/g, ''));
+      const received = JSON.parse(run(`node test-cases/${entry}/dist2`));
+      expect(received).toStrictEqual(expected);
+    });
+
+    it(`Project test-cases/${entry}/src3 builds`, () => {
+      expect(() => run(`npm run build-test-case ${syntaxIndex} 3`)).not.toThrow();
+    });
+
+    it('Ident map is removed', () => {
+      const path = resolve('test-cases', entry, '/dist1/css/styles.map.json');
+      const message = `ENOENT: no such file or directory, stat '${path}'`;
+      expect(() => statSync(path)).toThrow(message);
+    });
+  });
+}
+
+function testCaseWithoutPlugin(entry: string, syntaxIndex: string, syntaxName: string) {
+  describe(`Check Webpack compilation - Case ${syntaxIndex}: ${syntaxName}`, () => {
+    it(`Project test-cases/${entry}/src builds on production mode`, () => {
+      expect(() => run(`npm run build-test-case -- ${syntaxIndex} 1`)).not.toThrow();
+    });
+
+    it('Output CSS file is correct on production mode', () => {
+      expect(readCssFileSync(entry, 1)).toBe(expectedMinifiedCss);
+    });
+
+    it(`Project test-cases/${entry}/src builds on development mode`, () => {
+      expect(() => run(`npm run build-test-case -- ${syntaxIndex} 2`)).not.toThrow();
+    });
+
+    it('Output CSS file is correct on development mode', () => {
+      expect(readCssFileSync(entry, 2)).toBe(expectedUnminifiedCss);
+    });
+  });
+}
+
+function readCssFileSync(entry: string, index: number) {
+  return readFileSync(resolve('test-cases', entry, `dist${index}/main.min.css`), 'utf-8')
+    .replace(/\/\*(.|\n)*?\*\//g, '')
+    .trim();
 }
