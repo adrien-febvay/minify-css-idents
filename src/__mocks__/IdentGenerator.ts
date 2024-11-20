@@ -2,9 +2,9 @@
 import OriginalIdentGenerator from '../IdentGenerator';
 
 export class IdentGenerator extends OriginalIdentGenerator {
-  public expectIdent(ident: string, key = `test-${ident}`) {
+  public expectIdent(outputIdent: string, inputIdent = `test-${outputIdent}`) {
     try {
-      expect(this.generateIdent(key)).toBe(ident);
+      expect(this.generateIdent(inputIdent)).toBe(outputIdent);
     } catch (error) {
       if (error instanceof Error) {
         // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -14,8 +14,8 @@ export class IdentGenerator extends OriginalIdentGenerator {
     }
   }
 
-  public setLastIdent(lastIndent: string): this {
-    this.lastIdent = lastIndent.split('');
+  public setLastIdent(ident: string): this {
+    this.currIdentIndex = parseInt(ident, 36);
     return this;
   }
 

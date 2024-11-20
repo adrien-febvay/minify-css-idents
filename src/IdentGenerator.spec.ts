@@ -5,7 +5,7 @@ jest.mock('fs');
 const fs = jest.requireMock<{ [Key in keyof typeof originalFs]: jest.Mock }>('fs');
 
 const someOptions = {
-  exclude: ['some-ident', 'some-ident-prefix-*'],
+  exclude: ['someident', 'someprefix*'],
   mapIndent: 4,
   startIdent: 'some-ident',
 } as const;
@@ -21,8 +21,7 @@ describe('Check IdentGenerator class', () => {
   it('Options are defaulted', () => {
     const identGenerator = new IdentGenerator();
     expect(identGenerator.options).toStrictEqual({
-      exclude: ['app', 'root'],
-      excludePrefix: ['ad'],
+      exclude: ['ad*', 'app', 'root'],
       mapIndent: 2,
       startIdent: null,
     });
@@ -30,11 +29,13 @@ describe('Check IdentGenerator class', () => {
 
   it('Options are resolved', () => {
     const identGenerator = new IdentGenerator(someOptions);
-    expect(identGenerator.options).toMatchObject({
-      ...someOptions,
-      exclude: ['some-ident'],
-      excludePrefix: ['some-ident-prefix-'],
-    });
+    expect(identGenerator.options).toStrictEqual(someOptions);
+  });
+
+  it('Options "exclude" is sanitized', () => {
+    const exclude = ['ahf', 'ef0', 'b', 'c', 'egi', 'a*', 'bhi', 'c', 'a', 'a*', ''];
+    const identGenerator = new IdentGenerator({ exclude });
+    expect(identGenerator.options.exclude).toStrictEqual(['a*', 'b', 'c', 'bhi', 'ef0', 'egi']);
   });
 
   it('Invalid options are rejected', () => {
@@ -45,14 +46,15 @@ describe('Check IdentGenerator class', () => {
 
   it('Option startIdent works as intended', () => {
     new IdentGenerator({ startIdent: '' }).expectIdent('a');
+    new IdentGenerator({ startIdent: '-' }).expectIdent('a');
     new IdentGenerator({ startIdent: 'a' }).expectIdent('a');
     new IdentGenerator({ startIdent: 'a0' }).expectIdent('a0');
     new IdentGenerator({ startIdent: 'ad' }).expectIdent('ae');
-    new IdentGenerator({ startIdent: 'a00' }).expectIdent('a00');
+    new IdentGenerator({ startIdent: 'ad0' }).expectIdent('ae0');
   });
 
   it('Idents are incremented correctly', () => {
-    const { alphabet } = IdentGenerator;
+    const alphabet = '0123456789abcdefghijklmnopqrstuvwxyz';
     const identGenerator = new IdentGenerator({ exclude: [] });
     for (const char of alphabet.slice(10)) {
       identGenerator.expectIdent(char);
@@ -70,11 +72,15 @@ describe('Check IdentGenerator class', () => {
 
   it('Idents/prefixes are excluded', () => {
     const identGenerator = new IdentGenerator({ exclude: ['a', 'ad*'] });
-    expect(identGenerator.options).toMatchObject({ exclude: ['a'], excludePrefix: ['ad'] });
     identGenerator.expectIdent('b');
     identGenerator.setLastIdent('ac').expectIdent('ae');
     identGenerator.setLastIdent('acz').expectIdent('ae0');
     identGenerator.setLastIdent('aczz').expectIdent('ae00');
+  });
+
+  it('Idents are not transformed when hitting Number.MAX_SAFE_INTEGER', () => {
+    const identGenerator = new IdentGenerator();
+    identGenerator.setLastIdent('zzzzzzzzzz').expectIdent('unminified-ident', 'unminified-ident');
   });
 
   it('Idents are stored into and fetched from map', () => {
@@ -90,7 +96,7 @@ describe('Check IdentGenerator class', () => {
     const identGenerator = new IdentGenerator();
     identGenerator.loadMap('some-file');
     expect(identGenerator.identMap).toStrictEqual(identMap);
-    expect(identGenerator.lastIdent).toStrictEqual(['c', 'c']);
+    expect(identGenerator.lastIdent).toStrictEqual('cc');
   });
 
   it('A non-existing ident map is ignored', () => {

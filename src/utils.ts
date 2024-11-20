@@ -57,6 +57,12 @@ export function isDictLike(value: unknown): value is NodeJS.Dict<unknown> {
   return value ? typeof value === 'object' : false;
 }
 
+export type Falsy<Type = never> = Type | undefined | null | false | 0 | '';
+
+export function isTruthy<Type>(value: Falsy<Type>): value is Type {
+  return Boolean(value);
+}
+
 export function isError(value: unknown): value is Error & { code: unknown } {
   return value instanceof Error;
 }

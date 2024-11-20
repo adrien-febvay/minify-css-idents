@@ -2,20 +2,9 @@
 
 ![CI Tests status](https://github.com/adrien-febvay/minify-css-idents/actions/workflows/ci-tests.yml/badge.svg)
 
-A Webpack plug-in to shorten identifiers to make CSS files lighter.
+Webpack plug-in using [css-loader](https://www.npmjs.com/package/css-loader) to shorten identifiers and make CSS files lighter.
 
-## Disclaimer: package still in development stage
-
-The solutions it uses are not optimal yet:
-- At the moment it uses `css-loader` to do its job, instead of having a loader of its own.
-- It cannot detect global CSS identifiers yet, which must therefore be declared in the options.
-
-This package will be improved over time. In the meantime, while it seems to do its job correctly,
-it may not work as intended with all building solutions.
-
-All suggestions are welcome, should you have any idea for a feature or
-insight about how this package should operate, especially when it comes to
-how it should interact with Webpack.
+For maximum efficiency, also use a CSS minifier like [css-minimizer-webpack-plugin/](https://webpack.js.org/plugins/css-minimizer-webpack-plugin/).
 
 ## Setup
 
@@ -70,51 +59,12 @@ module.exports = {
 
 If your project has a unique build step and you don't want a map file to be emitted or specify any option, you may omit the plugin altogether. The loader will then instanciate one with the default options on its own.
 
-### Alternative syntax
-
-Should `minify-css-idents/css-loader` not work properly, or should your configuration not allow its use, you may rely on the `MinifyCssIdentsPlugin.getLocalIdent` function, ie:
-
-
-```js
-const MinifyCssIdentsPlugin = require("minify-css-idents");
-module.exports = {
-  module: {
-    rules: [
-      {
-        test: /\.css$/,
-        use: [
-          "style-loader",
-          {
-            loader: "css-loader",
-            options: {
-              modules: {
-                getLocalIdent: MinifyCssIdentsPlugin.getLocalIdent
-              }
-            }
-          },
-          "postcss-loader"
-        ]
-      }
-    ]
-  }
-};
-```
-
-If you already rely on a custom `getLocalIdent` function to generate unminified CSS identifiers, you may specify it:
-
-```js
-  modules: {
-    getLocalIdent: MinifyCssIdentsPlugin.getLocalIdent(your_former_getLocalIdent_here)
-  }
-```
-
-
 ## Options
 
-Available options to specify in the instanciation of the minifier:
+Available options to specify in the instanciation of `MinifyCssIdentsPlugin`:
 
 ```js
-const minifyCssIdentsPlugin = new MinifyCssIdentsPlugin({
+new MinifyCssIdentsPlugin({
   enabled: true,
   exclude: ["some-ident", "some-ident-prefix-*"],
   filename: "path-to/idents.map.json",
@@ -134,17 +84,15 @@ It is also active by default if `MinifyCssIdentsPlugin` has not been registered 
 
 ### options.exclude
 
-Default value: `["app", "root", "ad*"]`
+Default value: `["ad*", "app", "root"]`
 
-Identifiers of identifier prefixes the minifier should not generate. For instance, by default the minifier won't generate any identifier "app", "root", or starting with "ad".
+Identifiers of identifier prefixes the minifier should not generate. You should put there all global identifiers your project uses that could match a minified one.
 
-You should put there all global identifiers your project use, meaning all identifiers that wouldn't get changed by `css-loaded`.
+A global identifier is one that wouldn't get changed by `css-loaded`, either because it is wrapped by `:global()`, or because the CSS is not processed by [css-loader](https://www.npmjs.com/package/css-loader) to begin with (typically the stylesheet of an external module in which classnames are hard-coded).
 
-You may also add there identifiers that may be problematics, like `ad*`.
+You may also add there identifiers that may be problematics, like any identifier beginning with "ad".
 
-While the risk of generating an identifier already used as a global one is very low (it cannot happen if you have less than 900 generated identifiers and your shorter global identifier has 3 characters), you should set this options to cover your bases.
-
-Future versions of this package should offer better means to avoid overlapping with global identifiers.
+Also, note that a global identifier/prefix longer than 10 characters, not beginning with a letter or having characters others than letters and digits cannot match a minified identifier. It is then not necessary to specify it in this option and it would be ignored anyway.
 
 ### options.filename
 
@@ -195,7 +143,7 @@ Possible values:
 
 Please note that `"default"` is the only mode where the minifier won't throw an error if it doesn't find the map file when trying to load it.
 
-The creation, update or deletion of the map will occur when Webpack is done precessing assets.
+The creation, update or deletion of the map will occur when Webpack is done processing assets.
 
 ### options.startIdent
 
@@ -203,18 +151,73 @@ Default value: `null`
 
 Identifier to start the generation with.
 
-Note: Will be skipped if excluded in the options.
+Please note that this identifier will be skipped if it matches a value in the "exclude" option.
 
-## How the package works
+## Alternative syntax
 
-The `minify-css-idents/css-loader` wraps `css-loader` in order to override its [getLocalIdent](https://webpack.js.org/loaders/css-loader/#getlocalident) option, which allows to specify a function to generate CSS identifiers.
+Should `minify-css-idents/css-loader` not work properly or should your configuration not allow to use it, you may rely on the `MinifyCssIdentsPlugin.getLocalIdent` function, ie:
 
-Before generating a minified identifier, the `MinifyCssIdentsPlugin.getLocalIdent` generates an unminified one as `css-loader` would, using the [getLocalIdent](https://webpack.js.org/loaders/css-loader/#getlocalident) function specified, or the default one.
+```js
+const MinifyCssIdentsPlugin = require("minify-css-idents");
+module.exports = {
+  module: {
+    rules: [
+      {
+        test: /\.css$/,
+        use: [
+          "style-loader",
+          {
+            loader: "css-loader",
+            options: {
+              modules: {
+                getLocalIdent: MinifyCssIdentsPlugin.getLocalIdent
+              }
+            }
+          },
+          "postcss-loader"
+        ]
+      }
+    ]
+  }
+};
+```
+
+If you already rely on a custom [getLocalIdent](https://webpack.js.org/loaders/css-loader/#getlocalident) function to generate unminified CSS identifiers, you may specify it:
+
+```js
+  modules: {
+    getLocalIdent: MinifyCssIdentsPlugin.getLocalIdent(your_former_getLocalIdent_here)
+  }
+```
+
+## How the package works and additional notes
+
+### About the loader
+
+The `minify-css-idents/css-loader` wraps [css-loader](https://www.npmjs.com/package/css-loader) in order to override its [getLocalIdent](https://webpack.js.org/loaders/css-loader/#getlocalident) option, which allows to specify a function to generate CSS identifiers.
+
+### About CSS identifiers generation
+
+A minified identifier is a positive integer number representation in base 36 not beginning with a digit. Because of JavaScript's integer limitations (see [Number.MAX_SAFE_INTEGER](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER)), they are limited to 10 characters. It matches the regular expression `/^[a-z][0-9a-z]{0,9}$/i`.
+
+In simpler terms, a minified identifier is a letter eventually followed by up to 9 letters and digits.
+
+Before generating a minified identifier, the `MinifyCssIdentsPlugin.getLocalIdent` function generates an unminified one just as [css-loader](https://www.npmjs.com/package/css-loader) would, using the [getLocalIdent](https://webpack.js.org/loaders/css-loader/#getlocalident) function specified in the loader options, or the default one provided with [css-loader](https://www.npmjs.com/package/css-loader).
+
+### About the plugin
 
 When `MinifyCssIdentsPlugin` is registered in Webpack's plug-ins, it has the opportunity to create, update and/or load an indentifier map file.
 This feature is critical to keep the identifiers consistent across build steps.
 
 It uses the `beforeCompile` hook of Webpack's compiler to read the map file, then the `compilation` and `afterProcessAssets` hooks to write/delete it.
+
+### About the "exclude" option
+
+It does not accept regular expressions for two reasons:
+1. Lack of efficiency: Every generated identifier would be matched with every provided RegExp. By only accepting string identifiers and prefixes, the identifier generator can instead plan in advance for which identifiers it must avoid and do so very efficiently.
+2. Probably useless: Because of the format of minified identifiers, there shouldn't be a lot of exclusions to specify to begin with. Handling regular expressions therefore seems like an overkill.
+
+Such a feature could be developed on request, but at the moment it just seems unecessary.
 
 ## Credits
 
