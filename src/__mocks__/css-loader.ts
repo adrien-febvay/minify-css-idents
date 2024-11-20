@@ -16,6 +16,4 @@ function defaultGetLocalIdent(context: LoaderContext<object>, _localIdentName: s
 
 const pitch = void 0 as PitchLoaderDefinitionFunction | undefined;
 
-// The IDE might detect a TS error here, but it is actually fine.
-// It is because mocks are excluded from tsconfig.json (but included in tsconfig.eslint.json).
 export = Object.assign(cssLoader, { defaultGetLocalIdent, pitch });

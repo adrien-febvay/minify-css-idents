@@ -105,16 +105,21 @@ interface MockedGetLocalIdentFn {
 function mockCompiler(
   webpackOptions?: Partial<WebpackOptionsNormalized>,
   loaderContext?: Partial<LoaderContext<object>>,
-  compiler?: Compiler,
-) {
+  compiler = {} as Compiler,
+): Compiler & { hooks: ReturnType<typeof mockHooks> } {
+  const hooks = { ...compiler?.hooks, ...mockHooks(webpackOptions, loaderContext) };
+  const getCompilationHooks = (compilationArg = hooks.compilation) => compilationArg.moreHooks;
+  const context = compiler?.context ?? join(sep, 'default-context');
+  const options = { mode: 'production', ...compiler?.options, ...webpackOptions };
+  const webpack = { ...compiler?.webpack, NormalModule: { getCompilationHooks } };
+  const fakeCompiler = { ...compiler, context, hooks, options, webpack };
+  return fakeCompiler as Compiler & typeof fakeCompiler;
+}
+
+function mockHooks(webpackOptions?: Partial<WebpackOptionsNormalized>, loaderContext?: Partial<LoaderContext<object>>) {
   const beforeCompile = new FakeHook();
   const compilation = new CompilationHook({ mode: webpackOptions?.mode, ...loaderContext });
-  const getCompilationHooks = (compilationArg = compilation) => compilationArg.moreHooks;
-  const webpack = { ...compiler?.webpack, NormalModule: { getCompilationHooks } };
-  const hooks = { ...compiler?.hooks, beforeCompile, compilation };
-  const options = { mode: 'production', ...compiler?.options, ...webpackOptions };
-  const fakeCompiler = { context: join(sep, 'default-context'), ...compiler, hooks, options, webpack };
-  return fakeCompiler as Compiler & typeof fakeCompiler;
+  return { beforeCompile, compilation };
 }
 
 class FakeHook<TapType = string, Args extends unknown[] = []> {

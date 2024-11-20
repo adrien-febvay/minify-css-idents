@@ -10,7 +10,7 @@
     "eslint-fix": "eslint **/*/*.ts --fix",
     "test": "jest --coverage --runInBand --verbose",
     "build-test-case": "node test-cases/build",
-    "build": "node bin/build",
+    "build": "node bin/build tsconfig.build.json",
     "preversion": "changelog check && npm test && npm run build",
     "version": "changelog update && git add CHANGELOG.md"
   },

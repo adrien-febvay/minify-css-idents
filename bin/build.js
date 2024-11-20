@@ -5,8 +5,24 @@ const os = require('os');
 const path = require('path');
 const { rimrafSync } = require('rimraf');
 
+const tsconfigPath = process.argv[2] ?? 'tsconfig.json';
 const resolve = (...args) => path.resolve(__dirname, '..', ...args);
 const { join, sep } = path;
+
+function deepMerge(target, source) {
+  const result = { ...target };
+  for (const key in source) {
+    const value = source[key];
+    if (value instanceof Array) {
+      result[key] = [...value];
+    } else if (value && typeof value === 'object') {
+      result[key] = deepMerge(result[key], value);
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
 
 function empty(path) {
   rimrafSync(join(path, '**', '*').split(sep).join('/'), { glob: true });
@@ -78,14 +94,21 @@ function remove(...path) {
   ignoreError(() => fs.rmSync(join(...path), { recursive: true }));
 }
 
-function resolveOutDir() {
-  const tsconfig = json5.parse(fs.readFileSync(resolve('tsconfig.json'), 'utf-8'));
+function resolveTsconfig(...path) {
+  const tsconfig = json5.parse(fs.readFileSync(resolve(path[0]), 'utf-8'));
   if (!tsconfig || typeof tsconfig !== 'object' || tsconfig instanceof Array) {
-    throw new Error('Invalid tsconfig.json file in project root');
+    throw new Error(`Invalid TypeScript configuration file: ${path.join('\n  Extending ')}`);
   } else if (tsconfig.extends) {
-    throw new Error('No support for "extends" option in tsconfig.json yet');
-  } else if (!tsconfig.compilerOptions?.outDir) {
-    throw new Error('The tsconfig.json file must have a "compilerOptions.outDir" option');
+    return deepMerge(resolveTsconfig(tsconfig.extends), tsconfig);
+  } else {
+    return tsconfig;
+  }
+}
+
+function resolveOutDir() {
+  const tsconfig = resolveTsconfig(tsconfigPath);
+  if (!tsconfig.compilerOptions?.outDir) {
+    throw new Error(`The "compilerOptions.outDir" option must be set in: ${tsconfigPath}`);
   } else {
     return resolve(tsconfig.compilerOptions.outDir);
   }
@@ -93,7 +116,7 @@ function resolveOutDir() {
 
 function tsc(tmpDir) {
   const npx = /^win\d+$/.test(process.platform) ? 'npx.cmd' : 'npx';
-  const args = ['tsc', '--outDir', tmpDir];
+  const args = ['tsc', '--outDir', tmpDir, '--project', JSON.stringify(tsconfigPath)];
   console.log('>', npx, ...args);
   console.log();
   const { error, status } = cp.spawnSync(npx, args, { shell: true, stdio: 'inherit' });
