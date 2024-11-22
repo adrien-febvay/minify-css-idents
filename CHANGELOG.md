@@ -1,4 +1,4 @@
-# Dev
+# Version 1.0.1
 - Fix faulty package.json
 
 # Version 1.0.0
