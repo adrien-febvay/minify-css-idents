@@ -91,7 +91,7 @@ for (const entry of readdirSync('test-cases')) {
 function testCaseWithPlugin(entry: string, syntaxIndex: string, syntaxName: string) {
   describe(`Check Webpack compilation - Case ${syntaxIndex}: ${syntaxName}`, () => {
     it(`Project test-cases/${entry}/src1 builds`, () => {
-      expect(() => run(`npm run build-test-case -- ${syntaxIndex} 1`)).not.toThrow();
+      expect(() => run(`node test-cases/build -- ${syntaxIndex} 1`)).not.toThrow();
     });
 
     it('Ident map is correct', () => {
@@ -99,7 +99,7 @@ function testCaseWithPlugin(entry: string, syntaxIndex: string, syntaxName: stri
     });
 
     it(`Project test-cases/${entry}/src2 builds`, () => {
-      expect(() => run(`npm run build-test-case ${syntaxIndex} 2`)).not.toThrow();
+      expect(() => run(`node test-cases/build ${syntaxIndex} 2`)).not.toThrow();
     });
 
     it('Ident map is still correct', () => {
@@ -113,7 +113,7 @@ function testCaseWithPlugin(entry: string, syntaxIndex: string, syntaxName: stri
     });
 
     it(`Project test-cases/${entry}/src3 builds`, () => {
-      expect(() => run(`npm run build-test-case ${syntaxIndex} 3`)).not.toThrow();
+      expect(() => run(`node test-cases/build ${syntaxIndex} 3`)).not.toThrow();
     });
 
     it('Ident map is removed', () => {
@@ -127,7 +127,7 @@ function testCaseWithPlugin(entry: string, syntaxIndex: string, syntaxName: stri
 function testCaseWithoutPlugin(entry: string, syntaxIndex: string, syntaxName: string) {
   describe(`Check Webpack compilation - Case ${syntaxIndex}: ${syntaxName}`, () => {
     it(`Project test-cases/${entry}/src builds on production mode`, () => {
-      expect(() => run(`npm run build-test-case -- ${syntaxIndex} 1`)).not.toThrow();
+      expect(() => run(`node test-cases/build -- ${syntaxIndex} 1`)).not.toThrow();
     });
 
     it('Output CSS file is correct on production mode', () => {
@@ -135,7 +135,7 @@ function testCaseWithoutPlugin(entry: string, syntaxIndex: string, syntaxName: s
     });
 
     it(`Project test-cases/${entry}/src builds on development mode`, () => {
-      expect(() => run(`npm run build-test-case -- ${syntaxIndex} 2`)).not.toThrow();
+      expect(() => run(`node test-cases/build -- ${syntaxIndex} 2`)).not.toThrow();
     });
 
     it('Output CSS file is correct on development mode', () => {
