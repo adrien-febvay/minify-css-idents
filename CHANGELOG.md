@@ -1,4 +1,4 @@
-# Dev
+# Version 0.6.0
 - Identifier generator greatly more efficient
 - Option "enabled" tries to default first to Webpack's optimization.minimize option value.
 
