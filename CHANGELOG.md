@@ -1,4 +1,4 @@
-# Dev
+# Version 1.0.0
 - First published version
 
 # Version 0.6.0
