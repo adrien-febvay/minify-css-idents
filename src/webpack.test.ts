@@ -46,7 +46,7 @@ const expectedMinifiedCss = `
 .d {
   display: none;
 }
-`.trim();
+`.replace(/\s+|;/g, '');
 
 const expectedUnminifiedCss = `
 .___styles__alpha {

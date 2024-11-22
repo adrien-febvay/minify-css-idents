@@ -1,1 +1,1 @@
-console.log(JSON.stringify(require('../src1/styles.css'), null, 2));
+console.log(JSON.stringify(require('../src1/styles.scss'), null, 2));

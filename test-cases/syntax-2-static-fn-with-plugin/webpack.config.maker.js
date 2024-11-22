@@ -17,12 +17,13 @@ function webpackConfig(index, mode) {
           use: 'babel-loader',
         },
         {
-          test: /\.css$/,
+          test: /\.scss$/,
           use: [
             index === 1 ? MiniCssExtractPlugin.loader : 'style-loader',
             {
               loader: 'css-loader',
               options: {
+                importLoaders: 2,
                 modules: {
                   exportLocalsConvention: 'camelCase',
                   getLocalIdent: MinifyCssIdentsPlugin.getLocalIdent,
@@ -33,6 +34,14 @@ function webpackConfig(index, mode) {
               },
             },
             'postcss-loader',
+            {
+              loader: 'sass-loader',
+              options: {
+                sassOptions: {
+                  indentWidth: 2,
+                },
+              },
+            },
           ],
         },
       ],

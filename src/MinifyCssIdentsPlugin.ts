@@ -2,7 +2,7 @@ import { rmSync } from 'fs';
 import { isAbsolute, join, relative } from 'path';
 import { Schema } from 'schema-utils/declarations/validate';
 import { Compilation, Compiler, LoaderContext as LegacyLoaderContext, Module, sources } from 'webpack';
-import { LoaderDefinition, LoaderDefinitionFunction, PitchLoaderDefinitionFunction } from 'webpack';
+import { LoaderDefinition, LoaderDefinitionFunction } from 'webpack';
 import { MinifyCssIdentsError } from './MinifyCssIdentsError';
 import { escape, escapeLocalIdent, isDictLike } from './utils';
 import legacyCssLoader, { defaultGetLocalIdent as legacyDefaultGetLocalIdent } from 'css-loader';
@@ -99,32 +99,23 @@ class MinifyCssIdentsPlugin extends Module {
 
   protected static createCssLoader(plugin?: MinifyCssIdentsPlugin): LoaderDefinition {
     let minifyCssIdentsPlugin = plugin;
-    function pitch(this: MinifyCssIdentsPlugin.LoaderContext, ...args: Parameters<PitchLoaderDefinitionFunction>) {
-      const getOptions = this.getOptions;
-      if (!getOptions[MinifyCssIdentsPlugin.symbol]) {
-        this.getOptions = function MinifyCssIdentsPlugin_getOptions(schema: Schema = {}) {
-          const options = getOptions.call(this, schema);
-          if (!options[MinifyCssIdentsPlugin.symbol]) {
-            options[MinifyCssIdentsPlugin.symbol] = true;
-            options.modules ??= {};
-            if (isDictLike(options.modules)) {
-              const { getLocalIdent } = options.modules;
-              minifyCssIdentsPlugin ??= MinifyCssIdentsPlugin.getInstance(this);
-              options.modules.getLocalIdent = MinifyCssIdentsPlugin.getLocalIdent(
-                getLocalIdent instanceof Function ? (getLocalIdent as GetLocalIdentFn) : void 0,
-              );
-            }
-          }
-          return options;
-        };
-        this.getOptions[MinifyCssIdentsPlugin.symbol] = true;
-      }
-      return legacyCssLoader.pitch?.apply(this, args);
-    }
     function cssLoader(this: MinifyCssIdentsPlugin.LoaderContext, ...args: Parameters<LoaderDefinitionFunction>) {
-      return legacyCssLoader.apply(this, args);
+      const legacyGetOptions = this.getOptions.bind(this);
+      function getOptions(this: MinifyCssIdentsPlugin.LoaderContext, schema: Schema = {}) {
+        const options = legacyGetOptions(schema);
+        options.modules ??= {};
+        if (isDictLike(options.modules)) {
+          const { getLocalIdent } = options.modules;
+          minifyCssIdentsPlugin ??= MinifyCssIdentsPlugin.getInstance(this);
+          options.modules.getLocalIdent = MinifyCssIdentsPlugin.getLocalIdent(
+            getLocalIdent instanceof Function ? (getLocalIdent as GetLocalIdentFn) : void 0,
+          );
+        }
+        return options;
+      }
+      return legacyCssLoader.apply({ ...this, getOptions }, args);
     }
-    return Object.assign(cssLoader, { ...legacyCssLoader, pitch });
+    return Object.assign(cssLoader, { ...legacyCssLoader });
   }
 
   public static get cssLoader() {
@@ -204,9 +195,6 @@ namespace MinifyCssIdentsPlugin {
 
   export interface LoaderContext extends LegacyLoaderContext<{ [key in string | symbol]?: unknown }> {
     [MinifyCssIdentsPlugin.symbol]?: MinifyCssIdentsPlugin;
-    getOptions: LegacyLoaderContext<{ [key in string | symbol]?: unknown }>['getOptions'] & {
-      [MinifyCssIdentsPlugin.symbol]?: true;
-    };
   }
 
   export interface Options extends IdentGenerator.Options {

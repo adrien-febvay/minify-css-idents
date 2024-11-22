@@ -154,19 +154,6 @@ describe('Check MinifyCssIdentsPlugin class', () => {
     expect(MinifyCssIdentsPlugin.cssLoader.pitch?.call(context, '', '', {})).toBe('defined');
   });
 
-  it('The getOptions() method is overriden once and only once', () => {
-    const minifyCssIdents = new MinifyCssIdentsPlugin();
-    const cssLoader = minifyCssIdents.cssLoader;
-    const context = { getOptions(this: void) {} };
-    const getOptions0 = context.getOptions;
-    void cssLoader.pitch?.call(context as LoaderContext<object>, '', '', {});
-    const getOptions1 = context.getOptions;
-    expect(getOptions1 === getOptions0).toBe(false);
-    void cssLoader.pitch?.call(context as LoaderContext<object>, '', '', {});
-    const getOptions2 = context.getOptions;
-    expect(getOptions2 === getOptions1).toBe(true);
-  });
-
   it('The getLocalIdent option is voided when not a function', () => {
     const minifyCssIdents1 = new MinifyCssIdentsPlugin({ enabled: false });
     const cssLoader1 = minifyCssIdents1.cssLoader;

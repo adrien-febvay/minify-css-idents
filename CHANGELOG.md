@@ -1,3 +1,6 @@
+# Dev
+- Fix minify-css-idents/css-loader breaking options for other loaders
+
 # Version 1.0.1
 - Fix faulty package.json
 
