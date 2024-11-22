@@ -37,7 +37,6 @@ function webpackConfig(index, mode) {
         },
       ],
     },
-    optimization: { minimize: false },
     output: {
       clean: true,
       filename: 'index.js',

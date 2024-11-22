@@ -1,5 +1,6 @@
 # Dev
 - Identifier generator greatly more efficient
+- Option "enabled" tries to default first to Webpack's optimization.minimize option value.
 
 # Version 0.5.0
 - First ident generated is now the actual value of the "startsWith" option

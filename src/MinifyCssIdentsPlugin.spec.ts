@@ -66,9 +66,24 @@ describe('Check MinifyCssIdentsPlugin class', () => {
     const minifyCssIdents2 = new MinifyCssIdentsPlugin();
     minifyCssIdents2.apply();
     expect(minifyCssIdents2.enabled).toBe(true);
-    const minifyCssIdents3 = new MinifyCssIdentsPlugin(null, { mode: 'development' });
+    const minifyCssIdents3 = new MinifyCssIdentsPlugin(null, { optimization: { minimize: false } });
     minifyCssIdents3.apply();
     expect(minifyCssIdents3.enabled).toBe(false);
+    const minifyCssIdents4 = new MinifyCssIdentsPlugin(null, { mode: 'development', optimization: {} });
+    minifyCssIdents4.apply();
+    expect(minifyCssIdents4.enabled).toBe(false);
+    const minifyCssIdents5 = new MinifyCssIdentsPlugin();
+    const context5 = { _compiler: { options: { optimization: { minimize: true } } } } as LoaderContext<object>;
+    expect(minifyCssIdents5.getLocalIdent(() => 'unminified')(context5)).toBe('a');
+    const minifyCssIdents6 = new MinifyCssIdentsPlugin();
+    const context6 = { _compiler: { options: { optimization: { minimize: false } } } } as LoaderContext<object>;
+    expect(minifyCssIdents6.getLocalIdent(() => 'unminified')(context6)).toBe('unminified');
+    const minifyCssIdents7 = new MinifyCssIdentsPlugin();
+    const context7 = { mode: 'production' } as LoaderContext<object>;
+    expect(minifyCssIdents7.getLocalIdent(() => 'unminified')(context7)).toBe('a');
+    const minifyCssIdents8 = new MinifyCssIdentsPlugin();
+    const context8 = { mode: 'development' } as LoaderContext<object>;
+    expect(minifyCssIdents8.getLocalIdent(() => 'unminified')(context8)).toBe('unminified');
   });
 
   it('Plug-in "enabled" state is effective', () => {

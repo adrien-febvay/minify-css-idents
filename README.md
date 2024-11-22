@@ -43,21 +43,19 @@ module.exports = {
 };
 ```
 
-Eventually, add the minifier to the plugins:
+Then add the minifier to the plugins:
 
 ```js
 const MinifyCssIdentsPlugin = require("minify-css-idents");
 module.exports = {
   plugins: [
     new MinifyCssIdentsPlugin({
-      filename: "path-to/idents.map.json",
+      filename: "path-to/idents-map.json",
       exclude: ["global-identifiers-here"]
     })
   ]
 };
 ```
-
-If your project has a unique build step and you don't want a map file to be emitted or specify any option, you may omit the plugin altogether. The loader will then instanciate one with the default options on its own.
 
 ## Options
 
@@ -76,11 +74,9 @@ new MinifyCssIdentsPlugin({
 
 ### options.enabled
 
-Default value: `true` when Webpack is on production mode, `false` otherwise.
+Default value: Webpack's [optimization.minimize](https://webpack.js.org/configuration/optimization/#optimizationminimize) option value when set, otherwise `true` when [mode](https://webpack.js.org/configuration/mode/) is set to "production" or omitted and `false` in any other mode.
 
-Enables the minifying of CSS identifiers. By default, the minifying is active on production mode for optimization, but disabled on development mode for debugging purposes.
-
-It is also active by default if `MinifyCssIdentsPlugin` has not been registered in the "plugins" Webpack option, because then the minifyier has no mean to known in which mode Webpack is running.
+Enables/disables the minification of CSS identifiers.
 
 ### options.exclude
 
@@ -210,6 +206,8 @@ When `MinifyCssIdentsPlugin` is registered in Webpack's plug-ins, it has the opp
 This feature is critical to keep the identifiers consistent across build steps.
 
 It uses the `beforeCompile` hook of Webpack's compiler to read the map file, then the `compilation` and `afterProcessAssets` hooks to write/delete it.
+
+When `MinifyCssIdentsPlugin` is omitted, it will instanciate automatically with its default options. However, it might not be able to detect the value of Webpack's [optimization.minimize](https://webpack.js.org/configuration/optimization/#optimizationminimize) option in the future, as the way of accessing the compiler's options from a loader is deprecated.
 
 ### About the "exclude" option
 

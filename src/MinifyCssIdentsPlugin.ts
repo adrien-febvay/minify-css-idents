@@ -46,7 +46,7 @@ class MinifyCssIdentsPlugin extends Module {
         return getLocalIdent;
       } else {
         const [context, ...otherArgs] = args as Parameters<GetLocalIdentFn>;
-        plugin.enabled ??= context.mode === 'production';
+        plugin.enabled ??= context._compiler?.options.optimization.minimize ?? context.mode === 'production';
         const priorLocalIdent = priorGetLocalIdent.call(this, context, ...otherArgs);
         return plugin.enabled ? plugin.identGenerator.generateIdent(priorLocalIdent) : priorLocalIdent;
       }
@@ -58,7 +58,7 @@ class MinifyCssIdentsPlugin extends Module {
     if (!this.applied) {
       const { name } = MinifyCssIdentsPlugin;
       const { enabled, filename, mode } = this.options;
-      this.enabled = enabled ?? compiler.options.mode === 'production';
+      this.enabled = enabled ?? compiler.options.optimization.minimize ?? compiler.options.mode === 'production';
       const resolvedFilename = filename && (isAbsolute(filename) ? filename : join(compiler.context, filename));
       if (this.enabled && resolvedFilename) {
         if (mode === 'default' || mode === 'load-map' || mode === 'extend-map' || mode === 'consume-map') {

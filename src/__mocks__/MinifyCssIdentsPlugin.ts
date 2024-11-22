@@ -110,9 +110,11 @@ function mockCompiler(
   const hooks = { ...compiler?.hooks, ...mockHooks(webpackOptions, loaderContext) };
   const getCompilationHooks = (compilationArg = hooks.compilation) => compilationArg.moreHooks;
   const context = compiler?.context ?? join(sep, 'default-context');
-  const options = { mode: 'production', ...compiler?.options, ...webpackOptions };
+  const optimization = compiler?.options?.optimization ?? webpackOptions?.optimization ?? { minimize: true };
+  const options = { mode: 'production', ...compiler?.options, ...webpackOptions, optimization };
   const webpack = { ...compiler?.webpack, NormalModule: { getCompilationHooks } };
   const fakeCompiler = { ...compiler, context, hooks, options, webpack };
+  hooks.compilation.loaderContext._compiler = fakeCompiler as Compiler & typeof fakeCompiler;
   return fakeCompiler as Compiler & typeof fakeCompiler;
 }
 
