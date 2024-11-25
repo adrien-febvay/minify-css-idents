@@ -182,7 +182,7 @@ Before generating a minified identifier, the `MinifyCssIdentsPlugin.getLocalIden
 When `MinifyCssIdentsPlugin` is registered in Webpack's plug-ins, it has the opportunity to emit and/or load an identifier map file.
 This feature is critical to keep the identifiers consistent across build steps.
 
-It uses the `beforeCompile` hook of Webpack's compiler to load the prior map, then the `compilation` and `afterProcessAssets` hooks to emit the new map.
+It uses the `beforeCompile` hook of Webpack's compiler to load the prior map, then the `thisCompilation` and`afterProcessAssets` hooks, at the stage `PROCESS_ASSETS_STAGE_ADDITIONAL`, to emit the new map.
 
 When `MinifyCssIdentsPlugin` is omitted, it will instanciate automatically with its default options. However, it might not be able to detect the value of Webpack's [optimization.minimize](https://webpack.js.org/configuration/optimization/#optimizationminimize) option in the future, as the way of accessing the compiler's options from a loader is deprecated.
 

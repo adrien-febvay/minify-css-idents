@@ -1,3 +1,6 @@
+# Dev
+- Fix map emitting failure when having multiple compilation processes, ie with html-webpack-plugin
+
 # Version 1.1.0
 - Options "mode" and "filename" replaced by "inputMap" and "outputMap"
 

@@ -24,9 +24,9 @@ describe('Check MinifyCssIdentsPlugin class', () => {
 
   it('Instance is registered in loader context', () => {
     const minifyCssIdentsPlugin = new MinifyCssIdentsPlugin();
-    const { compilation } = minifyCssIdentsPlugin.apply().hooks;
-    compilation.trigger();
-    expect(compilation.loaderContext[MinifyCssIdentsPlugin.symbol]).toBe(minifyCssIdentsPlugin);
+    const { thisCompilation } = minifyCssIdentsPlugin.apply().hooks;
+    thisCompilation.trigger();
+    expect(thisCompilation.loaderContext[MinifyCssIdentsPlugin.symbol]).toBe(minifyCssIdentsPlugin);
   });
 
   it('Options are resolved', () => {
@@ -71,7 +71,7 @@ describe('Check MinifyCssIdentsPlugin class', () => {
     minifyCssIdents.getLocalIdent('some-path', 'n/a', 'some-name');
     expect(minifyCssIdents.identGenerator.identMap).toStrictEqual({});
     expect(compiler.hooks.beforeCompile.listeners.length).toBe(0);
-    expect(compiler.hooks.compilation.hooks.afterProcessAssets.listeners.length).toBe(0);
+    expect(compiler.hooks.thisCompilation.hooks.afterProcessAssets.listeners.length).toBe(0);
   });
 
   it('Idents are made from default idents', () => {
@@ -179,12 +179,12 @@ describe('Check MinifyCssIdentsPlugin class', () => {
     // We want to make sure getLocalIdent is called on the right instance, without the help of implicitInstance
     const minifyCssIdentsPlugin2 = new MinifyCssIdentsPlugin();
     MinifyCssIdentsPlugin.implicitInstance = void 0;
-    const { compilation } = minifyCssIdentsPlugin2.apply().hooks;
-    compilation.trigger();
+    const { thisCompilation } = minifyCssIdentsPlugin2.apply().hooks;
+    thisCompilation.trigger();
     // eslint-disable-next-line @typescript-eslint/unbound-method
     const get = jest.fn(Object.getOwnPropertyDescriptor(MinifyCssIdentsPlugin.prototype, 'getLocalIdent')?.get);
     Object.defineProperty(minifyCssIdentsPlugin2, 'getLocalIdent', { get });
-    const loaderContext = { ...compilation.loaderContext, resourcePath: '' };
+    const loaderContext = { ...thisCompilation.loaderContext, resourcePath: '' };
     expect(() => MinifyCssIdentsPlugin.getLocalIdent(loaderContext)).not.toThrow();
     expect(get).toHaveBeenCalledTimes(1);
   });
@@ -211,20 +211,20 @@ describe('Check MinifyCssIdentsPlugin class', () => {
     const rawSource = new sources.RawSource('{}\n');
 
     const minifyCssIdents0 = new MinifyCssIdentsPlugin();
-    const compilation0 = minifyCssIdents0.apply().hooks.compilation;
+    const compilation0 = minifyCssIdents0.apply().hooks.thisCompilation;
     compilation0.emitAsset.mockImplementation();
     compilation0.trigger();
     expect(compilation0.emitAsset).toHaveBeenCalledTimes(0);
 
     const minifyCssIdents1 = new MinifyCssIdentsPlugin({ outputMap: 'some-relative-path' });
-    const compilation1 = minifyCssIdents1.apply().hooks.compilation;
+    const compilation1 = minifyCssIdents1.apply().hooks.thisCompilation;
     compilation1.emitAsset.mockImplementation();
     compilation1.trigger();
     expect(compilation1.emitAsset).toHaveBeenCalledTimes(1);
     expect(compilation1.emitAsset).toHaveBeenCalledWith('some-relative-path', rawSource);
 
     const minifyCssIdents2 = new MinifyCssIdentsPlugin({ outputMap: join(sep, 'some-absolute-path') });
-    const compilation2 = minifyCssIdents2.apply().hooks.compilation;
+    const compilation2 = minifyCssIdents2.apply().hooks.thisCompilation;
     compilation2.emitAsset.mockImplementation();
     compilation2.trigger();
     expect(compilation2.emitAsset).toHaveBeenCalledTimes(1);

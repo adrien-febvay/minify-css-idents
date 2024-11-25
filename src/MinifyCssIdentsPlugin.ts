@@ -63,12 +63,12 @@ class MinifyCssIdentsPlugin extends Module {
         const resolvedSourceMap = isAbsolute(inputMap) ? inputMap : join(compiler.context, inputMap);
         compiler.hooks.beforeCompile.tap(name, () => this.identGenerator.loadMap(resolvedSourceMap));
       }
-      compiler.hooks.compilation.tap(name, (compilation) => {
+      compiler.hooks.thisCompilation.tap(name, (compilation) => {
         compiler.webpack.NormalModule.getCompilationHooks(compilation).loader.tap(name, (context) => {
           (context as MinifyCssIdentsPlugin.LoaderContext)[MinifyCssIdentsPlugin.symbol] = this;
         });
         if (this.enabled && outputMap) {
-          const stage = Compilation.PROCESS_ASSETS_STAGE_OPTIMIZE;
+          const stage = Compilation.PROCESS_ASSETS_STAGE_ADDITIONAL;
           compilation.hooks.afterProcessAssets.tap({ stage, name }, () => {
             const relativeEmitMap = isAbsolute(outputMap) ? relative(compiler.outputPath, outputMap) : outputMap;
             compilation.emitAsset(relativeEmitMap, new sources.RawSource(this.identGenerator.stringifyMap()));

@@ -42,7 +42,7 @@ export class MinifyCssIdentsPlugin extends OriginalMinifyCssIdentsPlugin {
         return getLocalIdent;
       } else {
         const contextArg = typeof arg0 === 'object' ? arg0 : { resourcePath: arg0 };
-        const loaderContext = minifyCssIdentsPlugin.compiler?.hooks.compilation.loaderContext;
+        const loaderContext = minifyCssIdentsPlugin.compiler?.hooks.thisCompilation.loaderContext;
         const context = { mode: 'production', ...loaderContext, ...contextArg } as LoaderContext;
         return superGetLocalIdent(priorGetLocalIdent)(context, localIdentName, localName, {});
       }
@@ -73,7 +73,7 @@ export class MinifyCssIdentsPlugin extends OriginalMinifyCssIdentsPlugin {
         const contextArg = typeof arg0 === 'object' ? arg0 : { resourcePath: arg0 };
         const instance = MinifyCssIdentsPlugin.implicitInstance;
         const compiler = instance instanceof MinifyCssIdentsPlugin ? instance.compiler : null;
-        const loaderContext = compiler?.hooks.compilation.loaderContext;
+        const loaderContext = compiler?.hooks.thisCompilation.loaderContext;
         const context = { mode: 'production', ...loaderContext, ...contextArg } as LoaderContext;
         return superGetLocalIdent(priorGetLocalIdent).call(this, context, localIdentName, localName, {});
       }
@@ -106,21 +106,21 @@ function mockCompiler(
   compiler = {} as Compiler,
 ): Compiler & { hooks: ReturnType<typeof mockHooks> } {
   const hooks = { ...compiler?.hooks, ...mockHooks(webpackOptions, loaderContext) };
-  const getCompilationHooks = (compilationArg = hooks.compilation) => compilationArg.moreHooks;
+  const getCompilationHooks = (compilationArg = hooks.thisCompilation) => compilationArg.moreHooks;
   const context = compiler?.context ?? join(sep, 'default-context');
   const optimization = compiler?.options?.optimization ?? webpackOptions?.optimization ?? { minimize: true };
   const options = { mode: 'production', ...compiler?.options, ...webpackOptions, optimization };
   const outputPath = compiler?.outputPath ?? join(sep, 'default-output');
   const webpack = { ...compiler?.webpack, NormalModule: { getCompilationHooks } };
   const fakeCompiler = { ...compiler, context, hooks, options, outputPath, webpack };
-  hooks.compilation.loaderContext._compiler = fakeCompiler as Compiler & typeof fakeCompiler;
+  hooks.thisCompilation.loaderContext._compiler = fakeCompiler as Compiler & typeof fakeCompiler;
   return fakeCompiler as Compiler & typeof fakeCompiler;
 }
 
 function mockHooks(webpackOptions?: Partial<WebpackOptionsNormalized>, loaderContext?: Partial<LoaderContext>) {
   const beforeCompile = new FakeHook();
-  const compilation = new CompilationHook({ mode: webpackOptions?.mode, ...loaderContext });
-  return { beforeCompile, compilation };
+  const thisCompilation = new CompilationHook({ mode: webpackOptions?.mode, ...loaderContext });
+  return { beforeCompile, thisCompilation };
 }
 
 class FakeHook<TapType = string, Args extends unknown[] = []> {
