@@ -1,3 +1,6 @@
+# Dev
+- Options "mode" and "filename" replaced by "inputMap" and "outputMap"
+
 # Version 1.0.3
 - Fix minify-css-idents/css-loader generating too much idents
 

@@ -7,7 +7,7 @@ const MAX_REPEATABLE_RANGE_INDEX = 101559956668415;
 const noRange = [Infinity, Infinity] as const;
 
 class IdentGenerator {
-  public readonly options: IdentGenerator.Options.Resolved;
+  public readonly options: IdentGenerator.Options.Sanitized;
   protected readonly excludeRanges: [Range, ...Range[]] = [[1, 10, true], noRange];
   protected currExcludeRange: Range = noRange;
   protected currIdentIndex: number;
@@ -197,7 +197,7 @@ namespace IdentGenerator {
   }
 
   export namespace Options {
-    export interface Resolved {
+    export interface Sanitized {
       readonly exclude: readonly string[];
       readonly mapIndent: number;
       readonly startIdent: string | null;

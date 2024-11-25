@@ -10,21 +10,6 @@ const cssLoader = jest.requireMock<typeof cssLoaderMock>('css-loader');
 jest.mock('fs');
 const fs = jest.requireMock<{ [Key in keyof typeof originalFs]: jest.Mock }>('fs');
 
-const someOptions = {
-  enabled: true,
-  filename: 'some-filename',
-  mapIndent: 4,
-  mode: 'extend-map',
-} as const;
-
-const someFile = join(sep, 'some-file');
-
-let consoleWarnSpy: jest.SpyInstance<void, Parameters<Console['warn']>, unknown>;
-
-beforeAll(() => {
-  consoleWarnSpy = jest.spyOn(console, 'warn');
-});
-
 afterEach(() => {
   jest.resetAllMocks();
 });
@@ -44,25 +29,19 @@ describe('Check MinifyCssIdentsPlugin class', () => {
     expect(compilation.loaderContext[MinifyCssIdentsPlugin.symbol]).toBe(minifyCssIdentsPlugin);
   });
 
-  it('Options are defaulted', () => {
-    const minifyCssIdents = new MinifyCssIdentsPlugin();
-    expect(minifyCssIdents.options).toMatchObject({
-      enabled: null,
-      filename: null,
-      mapIndent: 2,
-      mode: 'default',
-    });
-  });
-
   it('Options are resolved', () => {
-    const minifyCssIdents = new MinifyCssIdentsPlugin(someOptions);
-    expect(minifyCssIdents.options).toMatchObject(someOptions);
+    const minifyCssIdents1 = new MinifyCssIdentsPlugin();
+    expect(minifyCssIdents1.options).toMatchObject({ outputMap: null, enabled: null, mapIndent: 2, inputMap: null });
+
+    const someOptions = { enabled: true, inputMap: 'some-path', mapIndent: 4, outputMap: 'other-path' };
+    const minifyCssIdents2 = new MinifyCssIdentsPlugin(someOptions);
+    expect(minifyCssIdents2.options).toMatchObject(someOptions);
   });
 
   it('Plug-in "enabled" state is resolved', () => {
-    const minifyCssIdents1 = new MinifyCssIdentsPlugin(someOptions);
+    const minifyCssIdents1 = new MinifyCssIdentsPlugin({ enabled: true });
     minifyCssIdents1.apply();
-    expect(minifyCssIdents1.enabled).toBe(someOptions.enabled);
+    expect(minifyCssIdents1.enabled).toBe(true);
     const minifyCssIdents2 = new MinifyCssIdentsPlugin();
     minifyCssIdents2.apply();
     expect(minifyCssIdents2.enabled).toBe(true);
@@ -93,18 +72,6 @@ describe('Check MinifyCssIdentsPlugin class', () => {
     expect(minifyCssIdents.identGenerator.identMap).toStrictEqual({});
     expect(compiler.hooks.beforeCompile.listeners.length).toBe(0);
     expect(compiler.hooks.compilation.hooks.afterProcessAssets.listeners.length).toBe(0);
-  });
-
-  it('Filename is resolved', () => {
-    fs.readFileSync.mockImplementation(() => '{}');
-    const minifyCssIdents1 = new MinifyCssIdentsPlugin({ filename: 'some-file' });
-    minifyCssIdents1.apply().hooks.beforeCompile.trigger();
-    expect(fs.readFileSync).toHaveBeenCalledTimes(1);
-    expect(fs.readFileSync).toHaveBeenCalledWith(join(sep, 'default-context', 'some-file'), 'utf-8');
-    const minifyCssIdents2 = new MinifyCssIdentsPlugin({ filename: someFile });
-    minifyCssIdents2.apply().hooks.beforeCompile.trigger();
-    expect(fs.readFileSync).toHaveBeenCalledTimes(2);
-    expect(fs.readFileSync).toHaveBeenCalledWith(someFile, 'utf-8');
   });
 
   it('Idents are made from default idents', () => {
@@ -192,42 +159,6 @@ describe('Check MinifyCssIdentsPlugin class', () => {
     expect(cssLoader2.call(context2, 'ident-1')).toBe('___some-path__ident-1');
   });
 
-  it('Ident map is loaded', () => {
-    fs.readFileSync.mockImplementation(() => '{}');
-    const minifyCssIdents = new MinifyCssIdentsPlugin({ filename: someFile });
-    minifyCssIdents.apply().hooks.beforeCompile.trigger();
-    expect(fs.readFileSync).toHaveBeenCalledTimes(1);
-    expect(fs.readFileSync).toHaveBeenCalledWith(someFile, 'utf-8');
-  });
-
-  it('The ident map is saved', () => {
-    const minifyCssIdents = new MinifyCssIdentsPlugin({ filename: someFile, mapIndent: 0 });
-    const { compilation } = minifyCssIdents.apply().hooks;
-    compilation.emitAsset.mockImplementation();
-    compilation.trigger();
-    expect(compilation.emitAsset).toHaveBeenCalledTimes(1);
-    expect(compilation.emitAsset).toHaveBeenCalledWith(join('..', someFile), new sources.RawSource('{}\n'));
-  });
-
-  it('The ident map is removed', () => {
-    fs.rmSync.mockImplementation();
-    const minifyCssIdents = new MinifyCssIdentsPlugin({ filename: someFile, mode: 'consume-map' });
-    minifyCssIdents.apply().hooks.compilation.trigger();
-    expect(fs.rmSync).toHaveBeenCalledTimes(1);
-    expect(fs.rmSync).toHaveBeenCalledWith(someFile);
-  });
-
-  it('Warning is issued for ident map removal failure', () => {
-    consoleWarnSpy.mockImplementation();
-    fs.rmSync.mockImplementation(() => {
-      throw new Error();
-    });
-    const minifyCssIdents = new MinifyCssIdentsPlugin({ filename: someFile, mode: 'consume-map' });
-    minifyCssIdents.apply().hooks.compilation.trigger();
-    expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
-    expect(consoleWarnSpy).toHaveBeenCalledWith(`Failure to remove CSS identifier map file ${someFile}\n  Error`);
-  });
-
   it('Static method "getLocalIdent" uses the correct instance', () => {
     // Auto-instanciation
     MinifyCssIdentsPlugin.implicitInstance = void 0;
@@ -258,42 +189,45 @@ describe('Check MinifyCssIdentsPlugin class', () => {
     expect(get).toHaveBeenCalledTimes(1);
   });
 
-  function itExpectsMode(
-    mode: MinifyCssIdentsPlugin['options']['mode'],
-    ...expectations: ('toIgnoreENoEnt' | 'toLoad' | 'toEmit' | 'toRemove')[]
-  ) {
-    it(`Mode "${mode}" works as intended`, () => {
-      fs.readFileSync.mockImplementation(() => {
-        if (expectations.includes('toIgnoreENoEnt')) {
-          throw Object.assign(new Error(), { code: 'ENOENT' });
-        }
-        return '{}';
-      });
-      fs.readFileSync.mockName('fs.readFileSync');
-      fs.rmSync.mockImplementation();
-      fs.readFileSync.mockName('fs.rmSync');
-      const minifyCssIdents = new MinifyCssIdentsPlugin({ mode, filename: someFile });
-      const { beforeCompile, compilation } = minifyCssIdents.apply().hooks;
-      compilation.emitAsset.mockImplementation();
-      compilation.emitAsset.mockName('compilation.emitAsset');
-      beforeCompile.trigger();
-      compilation.trigger();
-      try {
-        expect(fs.readFileSync).toHaveBeenCalledTimes(Number(expectations.includes('toLoad')));
-        expect(compilation.emitAsset).toHaveBeenCalledTimes(Number(expectations.includes('toEmit')));
-        expect(fs.rmSync).toHaveBeenCalledTimes(Number(expectations.includes('toRemove')));
-      } catch (error) {
-        if (error instanceof Error) {
-          Error.captureStackTrace(error, itExpectsMode);
-        }
-        throw error;
-      }
-    });
-  }
+  it('Map is loaded', () => {
+    fs.readFileSync.mockImplementation(() => '{}');
 
-  itExpectsMode('default', 'toIgnoreENoEnt', 'toLoad', 'toEmit');
-  itExpectsMode('load-map', 'toLoad');
-  itExpectsMode('extend-map', 'toLoad', 'toEmit');
-  itExpectsMode('consume-map', 'toLoad', 'toRemove');
-  itExpectsMode('create-map', 'toEmit');
+    const minifyCssIdents0 = new MinifyCssIdentsPlugin();
+    minifyCssIdents0.apply().hooks.beforeCompile.trigger();
+    expect(fs.readFileSync).toHaveBeenCalledTimes(0);
+
+    const minifyCssIdents1 = new MinifyCssIdentsPlugin({ inputMap: 'some-relative-path' });
+    minifyCssIdents1.apply().hooks.beforeCompile.trigger();
+    expect(fs.readFileSync).toHaveBeenCalledTimes(1);
+    expect(fs.readFileSync).toHaveBeenCalledWith(join(sep, 'default-context', 'some-relative-path'), 'utf-8');
+
+    const minifyCssIdents2 = new MinifyCssIdentsPlugin({ inputMap: join(sep, 'some-absolute-path') });
+    minifyCssIdents2.apply().hooks.beforeCompile.trigger();
+    expect(fs.readFileSync).toHaveBeenCalledTimes(2);
+    expect(fs.readFileSync).toHaveBeenCalledWith(join(sep, 'some-absolute-path'), 'utf-8');
+  });
+
+  it('Map is saved', () => {
+    const rawSource = new sources.RawSource('{}\n');
+
+    const minifyCssIdents0 = new MinifyCssIdentsPlugin();
+    const compilation0 = minifyCssIdents0.apply().hooks.compilation;
+    compilation0.emitAsset.mockImplementation();
+    compilation0.trigger();
+    expect(compilation0.emitAsset).toHaveBeenCalledTimes(0);
+
+    const minifyCssIdents1 = new MinifyCssIdentsPlugin({ outputMap: 'some-relative-path' });
+    const compilation1 = minifyCssIdents1.apply().hooks.compilation;
+    compilation1.emitAsset.mockImplementation();
+    compilation1.trigger();
+    expect(compilation1.emitAsset).toHaveBeenCalledTimes(1);
+    expect(compilation1.emitAsset).toHaveBeenCalledWith('some-relative-path', rawSource);
+
+    const minifyCssIdents2 = new MinifyCssIdentsPlugin({ outputMap: join(sep, 'some-absolute-path') });
+    const compilation2 = minifyCssIdents2.apply().hooks.compilation;
+    compilation2.emitAsset.mockImplementation();
+    compilation2.trigger();
+    expect(compilation2.emitAsset).toHaveBeenCalledTimes(1);
+    expect(compilation2.emitAsset).toHaveBeenCalledWith(join('..', 'some-absolute-path'), rawSource);
+  });
 });

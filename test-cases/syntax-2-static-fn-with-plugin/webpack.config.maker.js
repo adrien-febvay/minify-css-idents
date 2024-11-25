@@ -2,8 +2,8 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const MinifyCssIdentsPlugin = require('minify-css-idents');
 const dirs = require('../dirs');
 
-function webpackConfig(index, mode) {
-  const { context, entry, filename, localIdentContext, path } = dirs(__dirname, index);
+function webpackConfig(index) {
+  const { context, entry, inputMap, localIdentContext, path, outputMap } = dirs(__dirname, index);
   
   return {
     context,
@@ -54,7 +54,7 @@ function webpackConfig(index, mode) {
     },
     plugins: [
       ...(index === 1 ? [new MiniCssExtractPlugin({ filename: '[name].min.css' })] : []),
-      new MinifyCssIdentsPlugin({ filename, mode }),
+      new MinifyCssIdentsPlugin({ inputMap, outputMap }),
     ],
     resolve: {
       extensions: ['.js'],

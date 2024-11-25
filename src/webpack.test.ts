@@ -1,5 +1,5 @@
 import { spawnSync } from 'child_process';
-import { readdirSync, readFileSync, statSync } from 'fs';
+import { readdirSync, readFileSync } from 'fs';
 import { resolve as legacyResolve } from 'path';
 
 const root = legacyResolve(__dirname, '..');
@@ -92,7 +92,7 @@ function testCaseWithPlugin(entry: string, syntaxIndex: string, syntaxName: stri
     });
 
     it('Ident map is correct', () => {
-      resultingIdentMap = readIdentMapSync(entry);
+      resultingIdentMap = readIdentMapSync(entry, 1);
       expect(typeof resultingIdentMap).toBe('object');
       expect(resultingIdentMap).not.toBe(null);
       const keys = resultingIdentMap && Object.keys(resultingIdentMap).sort();
@@ -106,7 +106,7 @@ function testCaseWithPlugin(entry: string, syntaxIndex: string, syntaxName: stri
     });
 
     it('Ident map is still correct', () => {
-      expect(readIdentMapSync(entry)).toStrictEqual(resultingIdentMap);
+      expect(readIdentMapSync(entry, 2)).toStrictEqual(resultingIdentMap);
     });
 
     it('Resulting CSS module is correct', () => {
@@ -115,16 +115,6 @@ function testCaseWithPlugin(entry: string, syntaxIndex: string, syntaxName: stri
       const expected: unknown = expectedEntries && Object.fromEntries(expectedEntries);
       const received = JSON.parse(run(`node test-cases/${entry}/dist2`));
       expect(received).toStrictEqual(expected);
-    });
-
-    it(`Project test-cases/${entry}/src3 builds`, () => {
-      expect(() => run(`node test-cases/build ${syntaxIndex} 3`)).not.toThrow();
-    });
-
-    it('Ident map is removed', () => {
-      const path = resolve('test-cases', entry, '/dist1/css/styles.map.json');
-      const message = `ENOENT: no such file or directory, stat '${path}'`;
-      expect(() => statSync(path)).toThrow(message);
     });
   });
 }
@@ -155,6 +145,6 @@ function readCssFileSync(entry: string, index: number) {
     .trim();
 }
 
-function readIdentMapSync(entry: string) {
-  return JSON.parse(readFileSync(resolve('test-cases', entry, 'dist1/styles.map.json'), 'utf-8'));
+function readIdentMapSync(entry: string, buildIndex: number) {
+  return JSON.parse(readFileSync(resolve('test-cases', entry, `dist${buildIndex}/styles.map.json`), 'utf-8'));
 }

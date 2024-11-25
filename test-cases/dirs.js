@@ -1,15 +1,15 @@
 const { join, relative, resolve } = require('path');
 
+const MAP = 'styles.map.json';
+
 function dirs(syntaxPath, srcIndex, distIndex = srcIndex) {
-  const testDir = relative(join(__dirname, '..'), __dirname);
-  const syntaxDir = relative(__dirname, syntaxPath);
-  const srcDir = `${testDir}/${syntaxDir}/src`;
-  const context = resolve(`${srcDir}${srcIndex}`);
+  const context = resolve(`${syntaxPath}/src${srcIndex}`);
   const entry = resolve(`${context}/index.js`);
-  const filename = resolve(`${testDir}/${syntaxDir}/dist1/styles.map.json`);
-  const localIdentContext = resolve(`${srcDir}1`);
-  const path = resolve(`${testDir}/${syntaxDir}/dist${distIndex}`);
-  return { context, entry, filename, localIdentContext, path };
+  const inputMap = srcIndex == 2 && `../dist1/${MAP}`;
+  const localIdentContext = resolve(`${syntaxPath}/src1`);
+  const path = resolve(`${syntaxPath}/dist${distIndex}`);
+  const outputMap = srcIndex && MAP;
+  return { context, entry, inputMap, localIdentContext, path, outputMap };
 }
 
 module.exports = dirs;

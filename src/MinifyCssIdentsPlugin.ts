@@ -1,15 +1,15 @@
-import { rmSync } from 'fs';
-import { isAbsolute, join, relative } from 'path';
-import { Schema } from 'schema-utils/declarations/validate';
-import { Compilation, Compiler, LoaderContext as LegacyLoaderContext, Module, sources } from 'webpack';
-import { LoaderDefinition, LoaderDefinitionFunction } from 'webpack';
-import { MinifyCssIdentsError } from './MinifyCssIdentsError';
-import { escape, escapeLocalIdent, isDictLike } from './utils';
+import type { Schema } from 'schema-utils/declarations/validate';
+import type { Compiler, LoaderContext as LegacyContext, LoaderDefinition, LoaderDefinitionFunction } from 'webpack';
+
 import legacyCssLoader, { defaultGetLocalIdent as legacyDefaultGetLocalIdent } from 'css-loader';
+import { isAbsolute, join, relative } from 'path';
+import { Compilation, Module, sources } from 'webpack';
+import { MinifyCssIdentsError } from './MinifyCssIdentsError';
+import { Falsy, escape, escapeLocalIdent, isDictLike } from './utils';
 import IdentGeneratorImport from './IdentGenerator';
 
 class MinifyCssIdentsPlugin extends Module {
-  public readonly options: MinifyCssIdentsPlugin.Options.Resolved;
+  public readonly options: MinifyCssIdentsPlugin.Options.Sanitized;
   protected readonly identGenerator: IdentGeneratorImport;
   protected applied = false;
   protected enabled: boolean | null;
@@ -18,9 +18,9 @@ class MinifyCssIdentsPlugin extends Module {
     super('css/minify-ident');
     this.identGenerator = new IdentGeneratorImport(options);
     this.options = Object.freeze({
-      enabled: options?.enabled ?? null,
-      filename: options?.filename ?? null,
-      mode: options?.mode ?? 'default',
+      enabled: options?.enabled == null ? null : Boolean(options.enabled),
+      inputMap: options?.inputMap || null,
+      outputMap: options?.outputMap || null,
       ...this.identGenerator.options,
     });
     this.enabled = this.options.enabled;
@@ -57,29 +57,21 @@ class MinifyCssIdentsPlugin extends Module {
   public apply(compiler: Compiler) {
     if (!this.applied) {
       const { name } = MinifyCssIdentsPlugin;
-      const { enabled, filename, mode } = this.options;
+      const { outputMap, enabled, inputMap } = this.options;
       this.enabled = enabled ?? compiler.options.optimization.minimize ?? compiler.options.mode === 'production';
-      const resolvedFilename = filename && (isAbsolute(filename) ? filename : join(compiler.context, filename));
-      if (this.enabled && resolvedFilename) {
-        if (mode === 'default' || mode === 'load-map' || mode === 'extend-map' || mode === 'consume-map') {
-          compiler.hooks.beforeCompile.tap(name, () =>
-            this.identGenerator.loadMap(resolvedFilename, mode === 'default'),
-          );
-        }
+      if (this.enabled && inputMap) {
+        const resolvedSourceMap = isAbsolute(inputMap) ? inputMap : join(compiler.context, inputMap);
+        compiler.hooks.beforeCompile.tap(name, () => this.identGenerator.loadMap(resolvedSourceMap));
       }
       compiler.hooks.compilation.tap(name, (compilation) => {
         compiler.webpack.NormalModule.getCompilationHooks(compilation).loader.tap(name, (context) => {
           (context as MinifyCssIdentsPlugin.LoaderContext)[MinifyCssIdentsPlugin.symbol] = this;
         });
-        if (this.enabled && resolvedFilename && mode !== 'load-map') {
+        if (this.enabled && outputMap) {
           const stage = Compilation.PROCESS_ASSETS_STAGE_OPTIMIZE;
           compilation.hooks.afterProcessAssets.tap({ stage, name }, () => {
-            if (mode === 'consume-map') {
-              removeMap(resolvedFilename);
-            } else {
-              const relativeFilename = relative(compiler.context, resolvedFilename);
-              compilation.emitAsset(relativeFilename, new sources.RawSource(this.identGenerator.stringifyMap()));
-            }
+            const relativeEmitMap = isAbsolute(outputMap) ? relative(compiler.outputPath, outputMap) : outputMap;
+            compilation.emitAsset(relativeEmitMap, new sources.RawSource(this.identGenerator.stringifyMap()));
           });
         }
       });
@@ -160,15 +152,6 @@ function defaultGetLocalIdent(this: unknown, ...args: Parameters<GetLocalIdentFn
   return escapeLocalIdent(resolvedLocalIdent);
 }
 
-function removeMap(filename: string) {
-  try {
-    rmSync(filename);
-  } catch (cause) {
-    // eslint-disable-next-line no-console
-    console.warn(MinifyCssIdentsError.message(`Failure to remove CSS identifier map file ${filename}`, cause));
-  }
-}
-
 namespace MinifyCssIdentsPlugin {
   export type Error = MinifyCssIdentsError;
 
@@ -192,25 +175,25 @@ namespace MinifyCssIdentsPlugin {
     export type Options = IdentGeneratorImport.Options;
 
     export namespace Options {
-      export type Resolved = IdentGeneratorImport.Options.Resolved;
+      export type Sanitized = IdentGeneratorImport.Options.Sanitized;
     }
   }
 
-  export interface LoaderContext extends LegacyLoaderContext<NodeJS.Dict<unknown>> {
+  export interface LoaderContext extends LegacyContext<NodeJS.Dict<unknown>> {
     [MinifyCssIdentsPlugin.symbol]?: MinifyCssIdentsPlugin;
   }
 
   export interface Options extends IdentGenerator.Options {
-    enabled?: boolean | null;
-    filename?: string | null;
-    mode?: 'default' | 'load-map' | 'extend-map' | 'consume-map' | 'create-map' | null;
+    enabled?: Falsy<boolean>;
+    inputMap?: Falsy<string>;
+    outputMap?: Falsy<string>;
   }
 
   export namespace Options {
-    export interface Resolved extends IdentGenerator.Options.Resolved {
+    export interface Sanitized extends IdentGenerator.Options.Sanitized {
       enabled: boolean | null;
-      filename: string | null;
-      mode: 'default' | 'load-map' | 'extend-map' | 'consume-map' | 'create-map';
+      inputMap: string | null;
+      outputMap: string | null;
     }
   }
 }

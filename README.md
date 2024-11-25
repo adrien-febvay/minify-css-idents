@@ -33,6 +33,11 @@ module.exports = {
             options: {
               // Your usual css-loader configuration here,
               // to setup how to build unminified CSS identifiers
+              // consistently accross all build steps
+              modules:  {
+                localIdentContext: 'common-path-for-all-build-steps',
+                localIdentName: '[path]___[name]__[local]',
+              }
             }
           },
           "postcss-loader"
@@ -50,8 +55,9 @@ const MinifyCssIdentsPlugin = require("minify-css-idents");
 module.exports = {
   plugins: [
     new MinifyCssIdentsPlugin({
-      filename: "path-to/idents-map.json",
-      exclude: ["global-identifiers-here"]
+      exclude: ["global-identifiers-here"],
+      inputMap: "path-to-prior/idents-map.json",
+      outputMap: "path-to-new/idents-map.json",
     })
   ]
 };
@@ -65,9 +71,9 @@ Available options to specify in the instanciation of `MinifyCssIdentsPlugin`:
 new MinifyCssIdentsPlugin({
   enabled: true,
   exclude: ["some-ident", "some-ident-prefix-*"],
-  filename: "path-to/idents.map.json",
+  inputMap: "path-to-prior/idents.map.json",
   mapIndent: 2,
-  mode: "default",
+  outputMap: "path-to-new/idents.map.json",
   startIdent: "some-minified-ident-to-start-with",
 });
 ```
@@ -90,13 +96,13 @@ You may also add there identifiers that may be problematics, like any identifier
 
 Also, note that a global identifier/prefix longer than 10 characters, not beginning with a letter or having characters others than letters and digits cannot match a minified identifier. It is then not necessary to specify it in this option and it would be ignored anyway.
 
-### options.filename
+### options.inputMap
 
 Default value: `null`
 
-Pathname to the identifier map file. Useful if:
-1. Your project has several build steps, using Webpack several times. Then the map file keeps the identifiers consistent across all steps.
-2. You want a map file to be emitted anyway.
+Pathname to the identifier map file of the previous build step, relative to Webpack's context path.
+
+If your project has several build steps, loading the previously emitted map is needed in order to keep the identifiers consistent.
 
 ### options.mapIndent
 
@@ -104,42 +110,13 @@ Default value: `2`
 
 The indentation size to use in the identifier map file. Set it to `0` if you want a minimal file without spaces and line returns.
 
-### options.mode
+### options.outputMap
 
-Default value: `"default"`
+Default value: `null`
 
-Specify what to do with the identifier map file.
+Pathname to the identifier map file to emit, relative to Webpack's output path.
 
-For instance, the first build step should only create then map, while the last one should only load it, and eventually delete it when done.
-
-Possible values:
-
-<table>
-  <tr>
-    <td><code>"default"</code></td>
-    <td>Load the map if available, add newly generated identifiers if any</td>
-  </tr>
-  <tr>
-    <td><code>"load-map"</code></td>
-    <td>Only load the map</td>
-  </tr>
-  <tr>
-    <td><code>"extend-map"</code></td>
-    <td>Load the map, add newly generated identifiers if any</td>
-  </tr>
-  <tr>
-    <td><code>"consume-map"</code></td>
-    <td>Load the map, delete it when done</td>
-  </tr>
-  <tr>
-    <td><code>"create-map"</code></td>
-    <td>Only create the map with generated identifiers</td>
-  </tr>
-</table>
-
-Please note that `"default"` is the only mode where the minifier won't throw an error if it doesn't find the map file when trying to load it.
-
-The creation, update or deletion of the map will occur when Webpack is done processing assets.
+If your project has several build steps, emitting a map for the next build step is needed in order to keep the identifiers consistent.
 
 ### options.startIdent
 
@@ -147,7 +124,7 @@ Default value: `null`
 
 Identifier to start the generation with.
 
-Please note that this identifier will be skipped if it matches a value in the "exclude" option.
+Please note that this identifier will be skipped if it matches a value in the "exclude" option, and ignored if it is not valid.
 
 ## Alternative syntax
 
@@ -202,10 +179,10 @@ Before generating a minified identifier, the `MinifyCssIdentsPlugin.getLocalIden
 
 ### About the plugin
 
-When `MinifyCssIdentsPlugin` is registered in Webpack's plug-ins, it has the opportunity to create, update and/or load an indentifier map file.
+When `MinifyCssIdentsPlugin` is registered in Webpack's plug-ins, it has the opportunity to emit and/or load an identifier map file.
 This feature is critical to keep the identifiers consistent across build steps.
 
-It uses the `beforeCompile` hook of Webpack's compiler to read the map file, then the `compilation` and `afterProcessAssets` hooks to write/delete it.
+It uses the `beforeCompile` hook of Webpack's compiler to load the prior map, then the `compilation` and `afterProcessAssets` hooks to emit the new map.
 
 When `MinifyCssIdentsPlugin` is omitted, it will instanciate automatically with its default options. However, it might not be able to detect the value of Webpack's [optimization.minimize](https://webpack.js.org/configuration/optimization/#optimizationminimize) option in the future, as the way of accessing the compiler's options from a loader is deprecated.
 
