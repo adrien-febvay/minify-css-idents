@@ -1,4 +1,4 @@
-# Dev
+# Version 1.0.3
 - Fix minify-css-idents/css-loader generating too much idents
 
 # Version 1.0.2
