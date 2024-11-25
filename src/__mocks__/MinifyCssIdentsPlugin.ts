@@ -1,9 +1,11 @@
 // Meant to be imported, not called with jest.mock().
 import type IdentGenerator from '../IdentGenerator';
-import { Compiler, LoaderContext, WebpackOptionsNormalized } from 'webpack';
+import { Compiler, WebpackOptionsNormalized } from 'webpack';
 import EventEmitter from 'events';
 import { join, sep } from 'path';
 import OriginalMinifyCssIdentsPlugin from '../MinifyCssIdentsPlugin';
+
+export type LoaderContext = OriginalMinifyCssIdentsPlugin.LoaderContext;
 
 export class MinifyCssIdentsPlugin extends OriginalMinifyCssIdentsPlugin {
   public declare enabled: boolean;
@@ -20,7 +22,7 @@ export class MinifyCssIdentsPlugin extends OriginalMinifyCssIdentsPlugin {
     this.webpackOptions = webpackOptions;
   }
 
-  public apply(compiler?: Compiler, loaderContext?: Partial<LoaderContext<object>>) {
+  public apply(compiler?: Compiler, loaderContext?: Partial<LoaderContext>) {
     this.compiler = mockCompiler(this.webpackOptions, loaderContext, compiler);
     super.apply(this.compiler);
     return this.compiler;
@@ -33,19 +35,15 @@ export class MinifyCssIdentsPlugin extends OriginalMinifyCssIdentsPlugin {
     let priorGetLocalIdent: GetLocalIdentFn | undefined = void 0;
     function getLocalIdent(priorGetLocalIdent?: GetLocalIdentFn): MockedGetLocalIdentFn;
     function getLocalIdent(resourcePath?: string, localIdentName?: string, localName?: string): string;
-    function getLocalIdent(context: LoaderContext<object>, localIdentName: string, localName: string): string;
-    function getLocalIdent(
-      arg0?: GetLocalIdentFn | string | LoaderContext<object>,
-      localIdentName = '',
-      localName = '',
-    ) {
+    function getLocalIdent(context: LoaderContext, localIdentName: string, localName: string): string;
+    function getLocalIdent(arg0?: GetLocalIdentFn | string | LoaderContext, localIdentName = '', localName = '') {
       if (arg0 === void 0 || typeof arg0 === 'function') {
         priorGetLocalIdent = arg0;
         return getLocalIdent;
       } else {
         const contextArg = typeof arg0 === 'object' ? arg0 : { resourcePath: arg0 };
         const loaderContext = minifyCssIdentsPlugin.compiler?.hooks.compilation.loaderContext;
-        const context = { mode: 'production', ...loaderContext, ...contextArg } as LoaderContext<object>;
+        const context = { mode: 'production', ...loaderContext, ...contextArg } as LoaderContext;
         return superGetLocalIdent(priorGetLocalIdent)(context, localIdentName, localName, {});
       }
     }
@@ -61,10 +59,10 @@ export class MinifyCssIdentsPlugin extends OriginalMinifyCssIdentsPlugin {
     let priorGetLocalIdent: GetLocalIdentFn | undefined = void 0;
     function getLocalIdent(priorGetLocalIdent?: GetLocalIdentFn): MockedGetLocalIdentFn;
     function getLocalIdent(resourcePath: string, localIdentName?: string, localName?: string): string;
-    function getLocalIdent(context: LoaderContext<object>, localIdentName?: string, localName?: string): string;
+    function getLocalIdent(context: LoaderContext, localIdentName?: string, localName?: string): string;
     function getLocalIdent(
       this: unknown,
-      arg0?: GetLocalIdentFn | string | LoaderContext<object>,
+      arg0?: GetLocalIdentFn | string | LoaderContext,
       localIdentName = '',
       localName = '',
     ) {
@@ -76,7 +74,7 @@ export class MinifyCssIdentsPlugin extends OriginalMinifyCssIdentsPlugin {
         const instance = MinifyCssIdentsPlugin.implicitInstance;
         const compiler = instance instanceof MinifyCssIdentsPlugin ? instance.compiler : null;
         const loaderContext = compiler?.hooks.compilation.loaderContext;
-        const context = { mode: 'production', ...loaderContext, ...contextArg } as LoaderContext<object>;
+        const context = { mode: 'production', ...loaderContext, ...contextArg } as LoaderContext;
         return superGetLocalIdent(priorGetLocalIdent).call(this, context, localIdentName, localName, {});
       }
     }
@@ -99,12 +97,12 @@ type GetLocalIdentFn = OriginalMinifyCssIdentsPlugin.GetLocalIdentFn;
 interface MockedGetLocalIdentFn {
   (priorGetLocalIdent?: GetLocalIdentFn): MockedGetLocalIdentFn;
   (resourcePath?: string, localIdentName?: string, localName?: string): string;
-  (context: LoaderContext<object>, localIdentName?: string, localName?: string): string;
+  (context: LoaderContext, localIdentName?: string, localName?: string): string;
 }
 
 function mockCompiler(
   webpackOptions?: Partial<WebpackOptionsNormalized>,
-  loaderContext?: Partial<LoaderContext<object>>,
+  loaderContext?: Partial<LoaderContext>,
   compiler = {} as Compiler,
 ): Compiler & { hooks: ReturnType<typeof mockHooks> } {
   const hooks = { ...compiler?.hooks, ...mockHooks(webpackOptions, loaderContext) };
@@ -118,7 +116,7 @@ function mockCompiler(
   return fakeCompiler as Compiler & typeof fakeCompiler;
 }
 
-function mockHooks(webpackOptions?: Partial<WebpackOptionsNormalized>, loaderContext?: Partial<LoaderContext<object>>) {
+function mockHooks(webpackOptions?: Partial<WebpackOptionsNormalized>, loaderContext?: Partial<LoaderContext>) {
   const beforeCompile = new FakeHook();
   const compilation = new CompilationHook({ mode: webpackOptions?.mode, ...loaderContext });
   return { beforeCompile, compilation };
@@ -150,7 +148,7 @@ class CompilationHook extends FakeHook<string, [CompilationHook]> {
   public readonly moreHooks = { loader: new FakeHook<string, [OriginalMinifyCssIdentsPlugin.LoaderContext]>() };
   public readonly loaderContext: OriginalMinifyCssIdentsPlugin.LoaderContext;
 
-  public constructor(loaderContext?: Partial<LoaderContext<object>>) {
+  public constructor(loaderContext?: Partial<LoaderContext>) {
     super();
     this.loaderContext = loaderContext as OriginalMinifyCssIdentsPlugin.LoaderContext;
   }

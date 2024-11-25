@@ -1,8 +1,8 @@
 import type originalFs from 'fs';
 import type cssLoaderMock from './__mocks__/css-loader';
 import { join, sep } from 'path';
-import { LoaderContext, sources } from 'webpack';
-import { MinifyCssIdentsPlugin } from './__mocks__/MinifyCssIdentsPlugin';
+import { sources } from 'webpack';
+import { MinifyCssIdentsPlugin, LoaderContext } from './__mocks__/MinifyCssIdentsPlugin';
 
 jest.mock('css-loader');
 const cssLoader = jest.requireMock<typeof cssLoaderMock>('css-loader');
@@ -73,16 +73,16 @@ describe('Check MinifyCssIdentsPlugin class', () => {
     minifyCssIdents4.apply();
     expect(minifyCssIdents4.enabled).toBe(false);
     const minifyCssIdents5 = new MinifyCssIdentsPlugin();
-    const context5 = { _compiler: { options: { optimization: { minimize: true } } } } as LoaderContext<object>;
+    const context5 = { _compiler: { options: { optimization: { minimize: true } } } } as LoaderContext;
     expect(minifyCssIdents5.getLocalIdent(() => 'unminified')(context5)).toBe('a');
     const minifyCssIdents6 = new MinifyCssIdentsPlugin();
-    const context6 = { _compiler: { options: { optimization: { minimize: false } } } } as LoaderContext<object>;
+    const context6 = { _compiler: { options: { optimization: { minimize: false } } } } as LoaderContext;
     expect(minifyCssIdents6.getLocalIdent(() => 'unminified')(context6)).toBe('unminified');
     const minifyCssIdents7 = new MinifyCssIdentsPlugin();
-    const context7 = { mode: 'production' } as LoaderContext<object>;
+    const context7 = { mode: 'production' } as LoaderContext;
     expect(minifyCssIdents7.getLocalIdent(() => 'unminified')(context7)).toBe('a');
     const minifyCssIdents8 = new MinifyCssIdentsPlugin();
-    const context8 = { mode: 'development' } as LoaderContext<object>;
+    const context8 = { mode: 'development' } as LoaderContext;
     expect(minifyCssIdents8.getLocalIdent(() => 'unminified')(context8)).toBe('unminified');
   });
 
@@ -122,13 +122,24 @@ describe('Check MinifyCssIdentsPlugin class', () => {
     expect(minifyCssIdents1.identGenerator.identMap).toStrictEqual({ 'custom-ident-1': 'a', 'custom-ident-2': 'b' });
   });
 
+  it('The `css-loader` pitch is called if it exists', () => {
+    cssLoader.pitch.mockImplementation(function (this: unknown) {
+      return this;
+    });
+    const context = { getOptions: () => ({}) } as LoaderContext;
+    const arg2 = { some: 'data' };
+    expect(MinifyCssIdentsPlugin.cssLoader.pitch?.call(context, 'arg0', 'arg1', arg2)).toBe(context);
+    expect(cssLoader.pitch).toHaveBeenCalledTimes(1);
+    expect(cssLoader.pitch).toHaveBeenCalledWith('arg0', 'arg1', arg2);
+  });
+
   it('The `css-loader` is wrapped correctly', () => {
+    cssLoader.mockImplementation(cssLoader.__mock);
     const minifyCssIdents = new MinifyCssIdentsPlugin();
 
     const cssLoader1 = minifyCssIdents.cssLoader;
     const options1 = {};
-    const context1 = { getOptions: () => options1, resourcePath: 'some-path' } as LoaderContext<object>;
-    void cssLoader1.pitch?.call(context1, '', '', {});
+    const context1 = { getOptions: () => options1, resourcePath: 'some-path' } as LoaderContext;
     expect(cssLoader1.call(context1, 'ident-1 ident-2 ident-1')).toBe('a b a');
     expect(minifyCssIdents.identGenerator.identMap).toStrictEqual({
       '___some-path__ident-1': 'a',
@@ -137,8 +148,7 @@ describe('Check MinifyCssIdentsPlugin class', () => {
 
     const cssLoader2 = MinifyCssIdentsPlugin.cssLoader;
     const options2 = {};
-    const context2 = { getOptions: () => options2, resourcePath: 'other-path' } as LoaderContext<object>;
-    void cssLoader2.pitch?.call(context2, '', '', {});
+    const context2 = { getOptions: () => options2, resourcePath: 'other-path' } as LoaderContext;
     expect(cssLoader2.call(context2, 'ident-1 ident-2 ident-1')).toBe('c d c');
     expect(minifyCssIdents.identGenerator.identMap).toStrictEqual({
       '___some-path__ident-1': 'a',
@@ -148,25 +158,37 @@ describe('Check MinifyCssIdentsPlugin class', () => {
     });
   });
 
-  it('The `css-loader` pitch is called if it exists', () => {
-    cssLoader.pitch = () => 'defined';
-    const context = { getOptions: () => ({}) } as LoaderContext<object>;
-    expect(MinifyCssIdentsPlugin.cssLoader.pitch?.call(context, '', '', {})).toBe('defined');
+  it('The loader options are overriden once and only once', () => {
+    let lastOptions: NodeJS.Dict<unknown> = {};
+    cssLoader.mockImplementation(function (this: LoaderContext) {
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
+      lastOptions = this.getOptions();
+    });
+    const minifyCssIdents = new MinifyCssIdentsPlugin();
+    const wrappedCssLoader = minifyCssIdents.cssLoader;
+    const context0 = { getOptions: () => ({}) } as LoaderContext;
+    void wrappedCssLoader.call(context0, '');
+    const options1 = lastOptions;
+    expect(context0.getOptions()).toStrictEqual({});
+    expect(options1.modules).not.toBe(void 0);
+    void wrappedCssLoader.call(context0, '');
+    const options2 = lastOptions;
+    expect(options2).toStrictEqual(options1);
   });
 
   it('The getLocalIdent option is voided when not a function', () => {
+    cssLoader.mockImplementation(cssLoader.__mock);
+
     const minifyCssIdents1 = new MinifyCssIdentsPlugin({ enabled: false });
     const cssLoader1 = minifyCssIdents1.cssLoader;
-    const options1 = { modules: { getLocalIdent: () => 'custom-ident' } };
-    const context1 = { getOptions: () => options1, resourcePath: 'some-path' } as LoaderContext<object>;
-    void cssLoader1.pitch?.call(context1, '', '', {});
+    const options1: NodeJS.Dict<unknown> = { modules: { getLocalIdent: () => 'custom-ident' } };
+    const context1 = { getOptions: () => options1, resourcePath: 'some-path' } as LoaderContext;
     expect(cssLoader1.call(context1, 'ident-1')).toBe('custom-ident');
 
     const minifyCssIdents2 = new MinifyCssIdentsPlugin({ enabled: false });
     const cssLoader2 = minifyCssIdents2.cssLoader;
-    const options2 = { modules: { getLocalIdent: 'bad-value' } };
-    const context2 = { getOptions: () => options2, resourcePath: 'some-path' } as LoaderContext<object>;
-    void cssLoader2.pitch?.call(context2, '', '', {});
+    const options2: NodeJS.Dict<unknown> = { modules: { getLocalIdent: 'bad-value' } };
+    const context2 = { getOptions: () => options2, resourcePath: 'some-path' } as LoaderContext;
     expect(cssLoader2.call(context2, 'ident-1')).toBe('___some-path__ident-1');
   });
 

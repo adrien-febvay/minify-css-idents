@@ -99,17 +99,20 @@ class MinifyCssIdentsPlugin extends Module {
 
   protected static createCssLoader(plugin?: MinifyCssIdentsPlugin): LoaderDefinition {
     let minifyCssIdentsPlugin = plugin;
+    let options: NodeJS.Dict<unknown>;
     function cssLoader(this: MinifyCssIdentsPlugin.LoaderContext, ...args: Parameters<LoaderDefinitionFunction>) {
       const legacyGetOptions = this.getOptions.bind(this);
       function getOptions(this: MinifyCssIdentsPlugin.LoaderContext, schema: Schema = {}) {
-        const options = legacyGetOptions(schema);
-        options.modules ??= {};
-        if (isDictLike(options.modules)) {
-          const { getLocalIdent } = options.modules;
-          minifyCssIdentsPlugin ??= MinifyCssIdentsPlugin.getInstance(this);
-          options.modules.getLocalIdent = MinifyCssIdentsPlugin.getLocalIdent(
-            getLocalIdent instanceof Function ? (getLocalIdent as GetLocalIdentFn) : void 0,
-          );
+        if (!options) {
+          options = legacyGetOptions(schema);
+          options.modules ??= {};
+          if (isDictLike(options.modules)) {
+            const { getLocalIdent } = options.modules;
+            minifyCssIdentsPlugin ??= MinifyCssIdentsPlugin.getInstance(this);
+            options.modules.getLocalIdent = MinifyCssIdentsPlugin.getLocalIdent(
+              getLocalIdent instanceof Function ? (getLocalIdent as GetLocalIdentFn) : void 0,
+            );
+          }
         }
         return options;
       }
@@ -193,7 +196,7 @@ namespace MinifyCssIdentsPlugin {
     }
   }
 
-  export interface LoaderContext extends LegacyLoaderContext<{ [key in string | symbol]?: unknown }> {
+  export interface LoaderContext extends LegacyLoaderContext<NodeJS.Dict<unknown>> {
     [MinifyCssIdentsPlugin.symbol]?: MinifyCssIdentsPlugin;
   }
 

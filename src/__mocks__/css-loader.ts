@@ -1,7 +1,7 @@
-import type { LoaderContext, PitchLoaderDefinitionFunction } from 'webpack';
+import type { LoaderContext } from 'webpack';
 import MinifyCssIdentsPlugin from '../MinifyCssIdentsPlugin';
 
-function cssLoader(this: MinifyCssIdentsPlugin.LoaderContext, content: string) {
+function __mock(this: MinifyCssIdentsPlugin.LoaderContext, content: string) {
   const modules = this.getOptions().modules as NodeJS.Dict<unknown>;
   const getLocalIdent = (modules?.getLocalIdent as MinifyCssIdentsPlugin.GetLocalIdentFn) ?? defaultGetLocalIdent;
   return content.replace(/\S+/g, (localName) => getLocalIdent(this, '', localName, {}));
@@ -14,6 +14,6 @@ function defaultGetLocalIdent(context: LoaderContext<object>, _localIdentName: s
   return `${path}___${name}__${localName}`;
 }
 
-const pitch = void 0 as PitchLoaderDefinitionFunction | undefined;
+const pitch = jest.fn();
 
-export = Object.assign(cssLoader, { defaultGetLocalIdent, pitch });
+export = Object.assign(jest.fn(), { __mock, defaultGetLocalIdent, pitch });
