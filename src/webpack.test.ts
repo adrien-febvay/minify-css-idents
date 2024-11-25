@@ -22,13 +22,8 @@ function run(...cmd: [string, ...string[]]) {
   }
 }
 
-const expectedIdentMap = `{
-  "___styles__alpha": "a",
-  "___styles__beta": "b",
-  "___styles__gamma": "c",
-  "___styles__delta": "d"
-}
-`;
+const expectedIdentMapKeys = ['___styles_1__alpha', '___styles_1__beta', '___styles_2__delta', '___styles_2__gamma'];
+const expectedIdentMapValues = ['a', 'b', 'c', 'd'];
 
 const expectedMinifiedCss = `
 .a {
@@ -90,12 +85,20 @@ for (const entry of readdirSync('test-cases')) {
 
 function testCaseWithPlugin(entry: string, syntaxIndex: string, syntaxName: string) {
   describe(`Check Webpack compilation - Case ${syntaxIndex}: ${syntaxName}`, () => {
+    let resultingIdentMap: unknown;
+
     it(`Project test-cases/${entry}/src1 builds`, () => {
       expect(() => run(`node test-cases/build -- ${syntaxIndex} 1`)).not.toThrow();
     });
 
     it('Ident map is correct', () => {
-      expect(readFileSync(resolve('test-cases', entry, 'dist1/styles.map.json'), 'utf-8')).toBe(expectedIdentMap);
+      resultingIdentMap = readIdentMapSync(entry);
+      expect(typeof resultingIdentMap).toBe('object');
+      expect(resultingIdentMap).not.toBe(null);
+      const keys = resultingIdentMap && Object.keys(resultingIdentMap).sort();
+      const values = resultingIdentMap && Object.values(resultingIdentMap).sort();
+      expect(keys).toStrictEqual(expectedIdentMapKeys);
+      expect(values).toStrictEqual(expectedIdentMapValues);
     });
 
     it(`Project test-cases/${entry}/src2 builds`, () => {
@@ -103,11 +106,13 @@ function testCaseWithPlugin(entry: string, syntaxIndex: string, syntaxName: stri
     });
 
     it('Ident map is still correct', () => {
-      expect(readFileSync(resolve('test-cases', entry, 'dist1/styles.map.json'), 'utf-8')).toBe(expectedIdentMap);
+      expect(readIdentMapSync(entry)).toStrictEqual(resultingIdentMap);
     });
 
     it('Resulting CSS module is correct', () => {
-      const expected = JSON.parse(expectedIdentMap.replace(/___styles__/g, ''));
+      const resultingEntries: [string, unknown][] = resultingIdentMap != null ? Object.entries(resultingIdentMap) : [];
+      const expectedEntries = resultingEntries.map(([key, value]) => [key.replace(/.*_/, ''), value]);
+      const expected: unknown = expectedEntries && Object.fromEntries(expectedEntries);
       const received = JSON.parse(run(`node test-cases/${entry}/dist2`));
       expect(received).toStrictEqual(expected);
     });
@@ -148,4 +153,8 @@ function readCssFileSync(entry: string, index: number) {
   return readFileSync(resolve('test-cases', entry, `dist${index}/main.min.css`), 'utf-8')
     .replace(/\/\*(.|\n)*?\*\//g, '')
     .trim();
+}
+
+function readIdentMapSync(entry: string) {
+  return JSON.parse(readFileSync(resolve('test-cases', entry, 'dist1/styles.map.json'), 'utf-8'));
 }
