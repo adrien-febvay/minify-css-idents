@@ -1,4 +1,4 @@
-# Dev
+# Version 1.1.0
 - Options "mode" and "filename" replaced by "inputMap" and "outputMap"
 
 # Version 1.0.3
