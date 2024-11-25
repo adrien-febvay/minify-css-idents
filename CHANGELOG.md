@@ -1,4 +1,4 @@
-# Dev
+# Version 1.1.1
 - Fix map emitting failure when having multiple compilation processes, ie with html-webpack-plugin
 
 # Version 1.1.0

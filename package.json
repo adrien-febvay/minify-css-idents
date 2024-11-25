@@ -1,6 +1,6 @@
 {
   "name": "minify-css-idents",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Minify CSS identifiers in order to emit smaller CSS files",
   "author": "Adrien Febvay <adrien.febvay@gmail.com> (https://github.com/adrien-febvay)",
   "license": "MIT",
